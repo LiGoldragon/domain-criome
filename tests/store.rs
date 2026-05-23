@@ -216,7 +216,6 @@ fn unknown_domains_and_unimplemented_redirect_projection_are_typed_rejections() 
     assert!(matches!(
         unknown,
         DomainReply::RequestRejected(signal_domain_criome::RequestRejected {
-            operation: signal_domain_criome::OperationKind::Project,
             reason: signal_domain_criome::RejectionReason::DomainUnknown,
         })
     ));
@@ -231,7 +230,6 @@ fn unknown_domains_and_unimplemented_redirect_projection_are_typed_rejections() 
     assert!(matches!(
         redirect_projection,
         DomainReply::RequestRejected(signal_domain_criome::RequestRejected {
-            operation: signal_domain_criome::OperationKind::Project,
             reason: signal_domain_criome::RejectionReason::ProjectionUnavailable,
         })
     ));
@@ -252,7 +250,6 @@ fn owner_rejections_are_typed() {
     assert!(matches!(
         delegation,
         OwnerReply::RequestRejected(owner_signal_domain_criome::RequestRejected {
-            operation: owner_signal_domain_criome::OperationKind::Delegate,
             reason: owner_signal_domain_criome::RejectionReason::DomainUnknown,
         })
     ));
@@ -272,7 +269,6 @@ fn owner_rejections_are_typed() {
     assert!(matches!(
         duplicate,
         OwnerReply::RequestRejected(owner_signal_domain_criome::RequestRejected {
-            operation: owner_signal_domain_criome::OperationKind::RegisterDomain,
             reason: owner_signal_domain_criome::RejectionReason::DomainAlreadyRegistered,
         })
     ));
@@ -287,7 +283,6 @@ fn owner_rejections_are_typed() {
     assert!(matches!(
         missing_authority,
         OwnerReply::RequestRejected(owner_signal_domain_criome::RequestRejected {
-            operation: owner_signal_domain_criome::OperationKind::RegisterAuthority,
             reason: owner_signal_domain_criome::RejectionReason::DomainUnknown,
         })
     ));
@@ -311,7 +306,6 @@ fn owner_rejections_are_typed() {
     assert!(matches!(
         duplicate_authority,
         OwnerReply::RequestRejected(owner_signal_domain_criome::RequestRejected {
-            operation: owner_signal_domain_criome::OperationKind::RegisterAuthority,
             reason: owner_signal_domain_criome::RejectionReason::AuthorityAlreadyRegistered,
         })
     ));
@@ -347,7 +341,6 @@ fn projection_policy_can_disable_public_records() {
     assert!(matches!(
         projection,
         DomainReply::RequestRejected(signal_domain_criome::RequestRejected {
-            operation: signal_domain_criome::OperationKind::Project,
             reason: signal_domain_criome::RejectionReason::ProjectionUnavailable,
         })
     ));

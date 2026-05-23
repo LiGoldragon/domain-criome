@@ -237,9 +237,7 @@ impl Store {
             Observation::Delegations(query) => {
                 DomainReply::Observed(ObservationResult::Delegations(self.delegations(query)))
             }
-            Observation::Projection(query) => match self
-                .projection_for(query, signal_domain_criome::OperationKind::Observe)
-            {
+            Observation::Projection(query) => match self.projection_for(query) {
                 Ok(projection) => DomainReply::Observed(ObservationResult::Projection(projection)),
                 Err(rejected) => DomainReply::RequestRejected(rejected),
             },
@@ -302,13 +300,12 @@ impl Store {
             return DomainReply::NoRecords(NoRecords { query });
         }
         DomainReply::RequestRejected(RequestRejected {
-            operation: signal_domain_criome::OperationKind::Resolve,
             reason: signal_domain_criome::RejectionReason::DomainUnknown,
         })
     }
 
     fn project(&self, query: ProjectionQuery) -> DomainReply {
-        match self.projection_for(query, signal_domain_criome::OperationKind::Project) {
+        match self.projection_for(query) {
             Ok(projection) => DomainReply::Projected(projection),
             Err(rejected) => DomainReply::RequestRejected(rejected),
         }
@@ -317,23 +314,19 @@ impl Store {
     fn projection_for(
         &self,
         query: ProjectionQuery,
-        operation: signal_domain_criome::OperationKind,
     ) -> std::result::Result<Projection, RequestRejected> {
         if !self.domain_exists(&query.domain) {
             return Err(RequestRejected {
-                operation,
                 reason: signal_domain_criome::RejectionReason::DomainUnknown,
             });
         }
         if !self.projection_enabled(&query.domain, query.scope) {
             return Err(RequestRejected {
-                operation,
                 reason: signal_domain_criome::RejectionReason::ProjectionUnavailable,
             });
         }
         if includes_redirect_rules(query.scope) {
             return Err(RequestRejected {
-                operation,
                 reason: signal_domain_criome::RejectionReason::ProjectionUnavailable,
             });
         }
@@ -388,7 +381,6 @@ impl Store {
             .expect("domain registry mutex should not be poisoned");
         if domains.iter().any(|domain| domain == &registration.domain) {
             return OwnerReply::RequestRejected(OwnerRequestRejected {
-                operation: owner_signal_domain_criome::OperationKind::RegisterDomain,
                 reason: owner_signal_domain_criome::RejectionReason::DomainAlreadyRegistered,
             });
         }
@@ -401,7 +393,6 @@ impl Store {
     fn delegate(&self, delegation: OwnerDelegation) -> OwnerReply {
         if !self.domain_exists(&delegation.domain) {
             return OwnerReply::RequestRejected(OwnerRequestRejected {
-                operation: owner_signal_domain_criome::OperationKind::Delegate,
                 reason: owner_signal_domain_criome::RejectionReason::DomainUnknown,
             });
         }
@@ -414,7 +405,6 @@ impl Store {
             existing.domain == delegation.domain && existing.name == delegation.name
         }) {
             return OwnerReply::RequestRejected(OwnerRequestRejected {
-                operation: owner_signal_domain_criome::OperationKind::Delegate,
                 reason: owner_signal_domain_criome::RejectionReason::DelegationAlreadyExists,
             });
         }
@@ -429,7 +419,6 @@ impl Store {
     fn register_authority(&self, registration: AuthorityRegistration) -> OwnerReply {
         if !self.domain_exists(&registration.domain) {
             return OwnerReply::RequestRejected(OwnerRequestRejected {
-                operation: owner_signal_domain_criome::OperationKind::RegisterAuthority,
                 reason: owner_signal_domain_criome::RejectionReason::DomainUnknown,
             });
         }
@@ -443,7 +432,6 @@ impl Store {
             .any(|authority| authority.domain == registration.domain)
         {
             return OwnerReply::RequestRejected(OwnerRequestRejected {
-                operation: owner_signal_domain_criome::OperationKind::RegisterAuthority,
                 reason: owner_signal_domain_criome::RejectionReason::AuthorityAlreadyRegistered,
             });
         }
@@ -458,7 +446,6 @@ impl Store {
     fn retire_domain(&self, retirement: Retirement) -> OwnerReply {
         if !self.domain_exists(&retirement.domain) {
             return OwnerReply::RequestRejected(OwnerRequestRejected {
-                operation: owner_signal_domain_criome::OperationKind::RetireDomain,
                 reason: owner_signal_domain_criome::RejectionReason::DomainUnknown,
             });
         }
@@ -491,7 +478,6 @@ impl Store {
             .any(|projection| !self.domain_exists(&projection.domain))
         {
             return OwnerReply::RequestRejected(OwnerRequestRejected {
-                operation: owner_signal_domain_criome::OperationKind::SetPolicy,
                 reason: owner_signal_domain_criome::RejectionReason::DomainUnknown,
             });
         }
