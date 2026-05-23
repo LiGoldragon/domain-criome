@@ -27,6 +27,37 @@ exactly one Signal peer: `domain-criome-daemon`.
 `cloud` can plan/apply, but it does not call Cloudflare, Google, Hetzner, or
 any other provider directly.
 
+## Content-addressed per-domain authority
+
+Per Spirit record 312 (Maximum certainty, 2026-05-23), `domain-criome` is the
+authority for the `.criome` TLD as a whole, but each individual `.criome`
+domain (for example `goldragon.criome`) is its own authority server. To check
+the current authority for a domain, callers ask the domain's own daemon. A
+top-level `domain-criome` instance acts as the `.criome` TLD registry and
+delegates to per-domain daemons; the last delegation snapshot per domain
+serves as cached state.
+
+When a `Resolve(name)` arrives for a domain this daemon does not own, the
+correct reply is `NotAuthoritative(Delegation { name, authority_endpoint })`
+— "ask the authority at `authority_endpoint`". Returning `DomainUnknown`
+hides the delegation and breaks the content-addressed model.
+
+This gives the workspace its own content-addressed DNS: a Criome domain is a
+content hash referencing the authority daemon's identity; lookups follow the
+delegation chain; cached delegation snapshots make the common case fast.
+
+## Runtime hard constraints
+
+Per Spirit records 321 and 322 (Maximum certainty, 2026-05-23):
+
+- The `domain-criome` runtime excludes provider APIs and direct CLI store
+  access. Provider integrations live in `cloud`; CLI peers reach the daemon
+  through the ordinary or owner socket, never through direct registry-file
+  reads.
+- Runtime feature work uses a separate worktree bookmark per
+  `skills/feature-development.md` §"When the repo is already locked", since
+  the canonical `domain-criome` checkout is exclusive to repo-shape changes.
+
 ## Actor Shape
 
 The first daemon should use one actor per concern:
@@ -57,3 +88,19 @@ resolution and projection work should be request-scoped and timeout-bounded.
 - No direct provider API calls.
 - No direct state access from the CLI.
 - No deprecated `signal-core` dependency in new code.
+
+## Pending schema-engine upgrade
+
+**Status:** scheduled for migration to schema-language-based contract per `reports/designer/326-v13-spirit-complete-schema-vision.md` + `reports/designer/324-migration-mvp-spirit-handover-re-specification.md`.
+
+**Target:** this component's hand-written `signal_channel!` invocation + Layer 2 Command/Effect + storage types convert to a single `domain-criome/domain-criome.schema` file. The brilliant macro library (`primary-ezqx.1`) reads the schema + emits all the wire types + ShortHeader projection + dispatcher + VersionProjection + storage descriptors.
+
+**Sequence:** per `primary-kbmi.2`. Spirit is the MVP pilot landing first via `primary-ezqx.1`; schema cutover after cloud (cloud is the upstream coordination point per `primary-kbmi.1`). Domain-criome's projection-to-cloud path means cloud's schema needs to land first so domain-criome can resolve its projection record types against cloud's schema-published types.
+
+**Per-component concerns:** Per `primary-kbmi.2`; schema cutover after cloud. The ordinary signal-domain-criome contract is paired with `owner-signal-domain-criome`; both legs of the policy-vs-working split appear in the single `domain-criome.schema` file per the schema-language's separation discipline.
+
+**References:**
+- `reports/designer/326-v13-spirit-complete-schema-vision.md` — uniform header form + schema-language design
+- `reports/designer/324-migration-mvp-spirit-handover-re-specification.md` — migration MVP + handover state
+- `reports/designer/322-spirit-mvp-positional-schema-worked-example.md` — Spirit MVP worked example
+- `reports/operator/174-schema-import-header-design-critique-2026-05-24.md` — header/body/feature separation + lowering rules
