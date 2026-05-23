@@ -1,7 +1,8 @@
 use domain_criome::Store;
 use owner_signal_domain_criome::{
-    Delegation as OwnerDelegation, DelegationTarget, Operation as OwnerOperation, Policy,
-    ProjectionDirective, ProjectionPolicy, Registration, Reply as OwnerReply,
+    AuthorityEndpoint, AuthorityRegistration, Delegation as OwnerDelegation, DelegationTarget,
+    Operation as OwnerOperation, Policy, ProjectionDirective, ProjectionPolicy, Registration,
+    Reply as OwnerReply,
 };
 use signal_domain_criome::{
     DelegationName, DomainName, Observation, Operation as DomainOperation, ProjectionQuery,
@@ -106,15 +107,14 @@ fn delegated_authority_returns_not_authoritative_for_descendant_resolution() {
     owner_reply(
         &store,
         OwnerOperation::RegisterDomain(Registration {
-            domain: DomainName::new("criome"),
+            domain: DomainName::new("goldragon.criome"),
         }),
     );
     owner_reply(
         &store,
-        OwnerOperation::Delegate(OwnerDelegation {
-            name: DelegationName::new("goldragon"),
-            domain: DomainName::new("criome"),
-            target: DelegationTarget::new("domain-criome://goldragon.criome"),
+        OwnerOperation::RegisterAuthority(AuthorityRegistration {
+            domain: DomainName::new("goldragon.criome"),
+            endpoint: AuthorityEndpoint::new("domain-criome://goldragon.criome"),
         }),
     );
 
@@ -133,6 +133,73 @@ fn delegated_authority_returns_not_authoritative_for_descendant_resolution() {
         authority.endpoint.as_str(),
         "domain-criome://goldragon.criome"
     );
+}
+
+#[test]
+fn registered_domain_without_address_records_returns_typed_no_records() {
+    let store = Store::new();
+    owner_reply(
+        &store,
+        OwnerOperation::RegisterDomain(Registration {
+            domain: DomainName::new("goldragon.criome"),
+        }),
+    );
+
+    let resolution = domain_reply(
+        &store,
+        DomainOperation::Resolve(ResolutionQuery {
+            name: DomainName::new("goldragon.criome"),
+            scope: ResolutionScope::Public,
+        }),
+    );
+    let DomainReply::NoRecords(no_records) = resolution else {
+        panic!("expected typed no-records reply");
+    };
+    assert_eq!(no_records.query.name, DomainName::new("goldragon.criome"));
+}
+
+#[test]
+fn authority_redirect_chain_resolves_through_second_store() {
+    let registry_store = Store::new();
+    owner_reply(
+        &registry_store,
+        OwnerOperation::RegisterDomain(Registration {
+            domain: DomainName::new("goldragon.criome"),
+        }),
+    );
+    owner_reply(
+        &registry_store,
+        OwnerOperation::RegisterAuthority(AuthorityRegistration {
+            domain: DomainName::new("goldragon.criome"),
+            endpoint: AuthorityEndpoint::new("domain-criome://goldragon.criome"),
+        }),
+    );
+
+    let redirect = domain_reply(
+        &registry_store,
+        DomainOperation::Resolve(ResolutionQuery {
+            name: DomainName::new("www.goldragon.criome"),
+            scope: ResolutionScope::Public,
+        }),
+    );
+    let DomainReply::NotAuthoritative(authority) = redirect else {
+        panic!("expected authority redirect");
+    };
+    assert_eq!(authority.domain, DomainName::new("goldragon.criome"));
+
+    let authority_store = registered_store();
+    let resolved = domain_reply(
+        &authority_store,
+        DomainOperation::Resolve(ResolutionQuery {
+            name: DomainName::new("www.goldragon.criome"),
+            scope: ResolutionScope::Public,
+        }),
+    );
+    let DomainReply::Resolved(resolution) = resolved else {
+        panic!("expected second store to resolve redirected name");
+    };
+    assert_eq!(resolution.addresses.len(), 1);
+    assert_eq!(resolution.addresses[0].address.as_str(), "203.0.113.10");
 }
 
 #[test]
@@ -207,6 +274,45 @@ fn owner_rejections_are_typed() {
         OwnerReply::RequestRejected(owner_signal_domain_criome::RequestRejected {
             operation: owner_signal_domain_criome::OperationKind::RegisterDomain,
             reason: owner_signal_domain_criome::RejectionReason::DomainAlreadyRegistered,
+        })
+    ));
+
+    let missing_authority = owner_reply(
+        &store,
+        OwnerOperation::RegisterAuthority(AuthorityRegistration {
+            domain: DomainName::new("missing.criome"),
+            endpoint: AuthorityEndpoint::new("domain-criome://missing.criome"),
+        }),
+    );
+    assert!(matches!(
+        missing_authority,
+        OwnerReply::RequestRejected(owner_signal_domain_criome::RequestRejected {
+            operation: owner_signal_domain_criome::OperationKind::RegisterAuthority,
+            reason: owner_signal_domain_criome::RejectionReason::DomainUnknown,
+        })
+    ));
+
+    let authority = owner_reply(
+        &store,
+        OwnerOperation::RegisterAuthority(AuthorityRegistration {
+            domain: DomainName::new("goldragon.criome"),
+            endpoint: AuthorityEndpoint::new("domain-criome://goldragon.criome"),
+        }),
+    );
+    assert!(matches!(authority, OwnerReply::AuthorityRegistered(_)));
+
+    let duplicate_authority = owner_reply(
+        &store,
+        OwnerOperation::RegisterAuthority(AuthorityRegistration {
+            domain: DomainName::new("goldragon.criome"),
+            endpoint: AuthorityEndpoint::new("domain-criome://goldragon.criome"),
+        }),
+    );
+    assert!(matches!(
+        duplicate_authority,
+        OwnerReply::RequestRejected(owner_signal_domain_criome::RequestRejected {
+            operation: owner_signal_domain_criome::OperationKind::RegisterAuthority,
+            reason: owner_signal_domain_criome::RejectionReason::AuthorityAlreadyRegistered,
         })
     ));
 }

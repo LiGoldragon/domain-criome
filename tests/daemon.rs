@@ -58,7 +58,7 @@ fn ordinary_daemon_handshake_accepts_current_protocol() {
             assert_eq!(reply_exchange, exchange);
             assert!(matches!(
                 single_domain_reply(reply),
-                DomainReply::Resolved(_)
+                DomainReply::NoRecords(_)
             ));
         }
         other => panic!("unexpected frame: {other:?}"),

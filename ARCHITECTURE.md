@@ -21,6 +21,7 @@ exactly one Signal peer: `domain-criome-daemon`.
 - branch delegations;
 - intelligent resolution, including `NotAuthoritative` replies for names
   delegated to another domain daemon;
+- typed `NoRecords` replies for registered names that have no address records;
 - provider-neutral public record projection;
 - provider-neutral redirect projection.
 
@@ -44,8 +45,8 @@ resolution and projection work should be request-scoped and timeout-bounded.
 
 1. Bind ordinary and owner Unix sockets.
 2. Decode `signal-domain-criome` and `owner-signal-domain-criome` frames.
-3. Store domain registrations, delegations, and projection policy through a
-   runtime store abstraction.
+3. Store domain registrations, branch delegations, off-daemon authority
+   registrations, and projection policy through a runtime store abstraction.
 4. Resolve a registered public domain from local state, or return authority
    delegation for off-daemon domains.
 5. Project public records for a registered domain.

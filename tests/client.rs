@@ -64,7 +64,7 @@ fn cli_binary_routes_working_request_to_daemon_socket() {
 
     assert!(output.status.success(), "{output:?}");
     let stdout = String::from_utf8(output.stdout).unwrap();
-    assert!(stdout.contains("Resolved"), "{stdout}");
+    assert!(stdout.contains("NoRecords"), "{stdout}");
     server.join().unwrap();
 }
 

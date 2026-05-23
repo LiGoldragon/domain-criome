@@ -9,17 +9,18 @@ use std::sync::Mutex;
 
 use nota_codec::NotaRecord;
 use owner_signal_domain_criome::{
-    Delegation as OwnerDelegation, DomainDelegated, DomainRegistered, DomainRetired,
-    Operation as OwnerOperation, Policy, PolicySet, ProjectionDirective, ProjectionPolicy,
-    Registration, Reply as OwnerReply, RequestRejected as OwnerRequestRejected, Retirement,
+    AuthorityRegistered, AuthorityRegistration, Delegation as OwnerDelegation, DomainDelegated,
+    DomainRegistered, DomainRetired, Operation as OwnerOperation, Policy, PolicySet,
+    ProjectionDirective, ProjectionPolicy, Registration, Reply as OwnerReply,
+    RequestRejected as OwnerRequestRejected, Retirement,
 };
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use signal_domain_criome::{
     Address, AuthorityDelegation, AuthorityEndpoint, Delegation as DomainDelegation,
     DelegationListing, DelegationQuery, DomainListing, DomainName, DomainNameSystemRecord,
-    DomainQuery, NetworkAddress, Observation, ObservationResult, Operation as DomainOperation,
-    Projection, ProjectionQuery, ProjectionScope, RecordKind, RecordValue, Reply as DomainReply,
-    RequestRejected, ResolutionQuery, ResolutionResult,
+    DomainQuery, NetworkAddress, NoRecords, Observation, ObservationResult,
+    Operation as DomainOperation, Projection, ProjectionQuery, ProjectionScope, RecordKind,
+    RecordValue, Reply as DomainReply, RequestRejected, ResolutionQuery, ResolutionResult,
 };
 use signal_frame::{NonEmpty, Reply as FrameReply, SubReply};
 
@@ -137,23 +138,34 @@ impl RegisteredDelegation {
             address: NetworkAddress::new(self.target.as_str()),
         })
     }
+}
 
-    fn authority_delegation(&self) -> Option<AuthorityDelegation> {
-        if self.target.as_str().parse::<IpAddr>().is_ok() {
-            return None;
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct RegisteredAuthority {
+    domain: DomainName,
+    endpoint: AuthorityEndpoint,
+}
+
+impl RegisteredAuthority {
+    fn from_owner(registration: AuthorityRegistration) -> Self {
+        Self {
+            domain: registration.domain,
+            endpoint: registration.endpoint,
         }
-        Some(AuthorityDelegation {
-            domain: self.fully_qualified_name(),
-            endpoint: AuthorityEndpoint::new(self.target.as_str()),
-        })
+    }
+
+    fn as_reply(&self) -> AuthorityDelegation {
+        AuthorityDelegation {
+            domain: self.domain.clone(),
+            endpoint: self.endpoint.clone(),
+        }
     }
 
     fn covers_name(&self, name: &DomainName) -> bool {
-        let delegation_name = self.fully_qualified_name();
-        name == &delegation_name
+        name == &self.domain
             || name
                 .as_str()
-                .ends_with(&format!(".{}", delegation_name.as_str()))
+                .ends_with(&format!(".{}", self.domain.as_str()))
     }
 }
 
@@ -161,6 +173,7 @@ impl RegisteredDelegation {
 pub struct Store {
     domains: Mutex<Vec<DomainName>>,
     delegations: Mutex<Vec<RegisteredDelegation>>,
+    authorities: Mutex<Vec<RegisteredAuthority>>,
     policy: Mutex<Policy>,
 }
 
@@ -169,6 +182,7 @@ impl Store {
         Self {
             domains: Mutex::new(Vec::new()),
             delegations: Mutex::new(Vec::new()),
+            authorities: Mutex::new(Vec::new()),
             policy: Mutex::new(Policy {
                 projections: Vec::new(),
             }),
@@ -272,23 +286,20 @@ impl Store {
     }
 
     fn resolve(&self, query: ResolutionQuery) -> DomainReply {
-        if self.domain_exists(&query.name) {
-            return DomainReply::Resolved(ResolutionResult {
-                query,
-                addresses: Vec::new(),
-            });
-        }
         if let Some(delegation) = self.delegation_for_name(&query.name) {
-            if let Some(authority) = delegation.authority_delegation() {
-                return DomainReply::NotAuthoritative(authority);
+            if let Some(address) = delegation.address() {
+                return DomainReply::Resolved(ResolutionResult {
+                    query,
+                    addresses: vec![address],
+                });
             }
-            return DomainReply::Resolved(ResolutionResult {
-                query,
-                addresses: delegation.address().into_iter().collect(),
-            });
+            return DomainReply::NoRecords(NoRecords { query });
         }
         if let Some(authority) = self.authority_for_name(&query.name) {
             return DomainReply::NotAuthoritative(authority);
+        }
+        if self.domain_exists(&query.name) {
+            return DomainReply::NoRecords(NoRecords { query });
         }
         DomainReply::RequestRejected(RequestRejected {
             operation: signal_domain_criome::OperationKind::Resolve,
@@ -362,6 +373,9 @@ impl Store {
         match operation {
             OwnerOperation::RegisterDomain(registration) => self.register_domain(registration),
             OwnerOperation::Delegate(delegation) => self.delegate(delegation),
+            OwnerOperation::RegisterAuthority(registration) => {
+                self.register_authority(registration)
+            }
             OwnerOperation::RetireDomain(retirement) => self.retire_domain(retirement),
             OwnerOperation::SetPolicy(policy) => self.set_policy(policy),
         }
@@ -412,6 +426,35 @@ impl Store {
         reply
     }
 
+    fn register_authority(&self, registration: AuthorityRegistration) -> OwnerReply {
+        if !self.domain_exists(&registration.domain) {
+            return OwnerReply::RequestRejected(OwnerRequestRejected {
+                operation: owner_signal_domain_criome::OperationKind::RegisterAuthority,
+                reason: owner_signal_domain_criome::RejectionReason::DomainUnknown,
+            });
+        }
+
+        let mut authorities = self
+            .authorities
+            .lock()
+            .expect("authority registry mutex should not be poisoned");
+        if authorities
+            .iter()
+            .any(|authority| authority.domain == registration.domain)
+        {
+            return OwnerReply::RequestRejected(OwnerRequestRejected {
+                operation: owner_signal_domain_criome::OperationKind::RegisterAuthority,
+                reason: owner_signal_domain_criome::RejectionReason::AuthorityAlreadyRegistered,
+            });
+        }
+        let reply = OwnerReply::AuthorityRegistered(AuthorityRegistered {
+            domain: registration.domain.clone(),
+            endpoint: registration.endpoint.clone(),
+        });
+        authorities.push(RegisteredAuthority::from_owner(registration));
+        reply
+    }
+
     fn retire_domain(&self, retirement: Retirement) -> OwnerReply {
         if !self.domain_exists(&retirement.domain) {
             return OwnerReply::RequestRejected(OwnerRequestRejected {
@@ -427,6 +470,10 @@ impl Store {
             .lock()
             .expect("delegation registry mutex should not be poisoned")
             .retain(|delegation| delegation.domain != retirement.domain);
+        self.authorities
+            .lock()
+            .expect("authority registry mutex should not be poisoned")
+            .retain(|authority| !domain_is_under_root(&authority.domain, &retirement.domain));
         self.policy
             .lock()
             .expect("policy mutex should not be poisoned")
@@ -477,12 +524,12 @@ impl Store {
     }
 
     fn authority_for_name(&self, name: &DomainName) -> Option<AuthorityDelegation> {
-        self.delegations
+        self.authorities
             .lock()
-            .expect("delegation registry mutex should not be poisoned")
+            .expect("authority registry mutex should not be poisoned")
             .iter()
-            .filter(|delegation| delegation.covers_name(name))
-            .filter_map(RegisteredDelegation::authority_delegation)
+            .filter(|authority| authority.covers_name(name))
+            .map(RegisteredAuthority::as_reply)
             .max_by_key(|authority| authority.domain.as_str().len())
     }
 
