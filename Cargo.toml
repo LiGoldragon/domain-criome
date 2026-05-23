@@ -1,0 +1,37 @@
+[package]
+name         = "domain-criome"
+version      = "0.1.0"
+edition      = "2024"
+rust-version = "1.85"
+license      = "MIT OR Apache-2.0"
+description  = "Criome domain registry, resolver, and projection daemon with thin CLI."
+publish      = false
+
+[lib]
+name = "domain_criome"
+path = "src/lib.rs"
+
+[[bin]]
+name = "domain-criome-daemon"
+path = "src/bin/domain-criome-daemon.rs"
+
+[[bin]]
+name = "domain-criome"
+path = "src/bin/domain-criome.rs"
+
+[dependencies]
+nota-codec                 = { git = "https://github.com/LiGoldragon/nota-codec.git", branch = "main" }
+nota-config                = { git = "https://github.com/LiGoldragon/nota-config.git", branch = "main" }
+owner-signal-domain-criome = { git = "https://github.com/LiGoldragon/owner-signal-domain-criome.git", branch = "main" }
+rkyv                       = { version = "0.8", default-features = false, features = ["std", "bytecheck", "little_endian", "pointer_width_32", "unaligned"] }
+signal-domain-criome       = { git = "https://github.com/LiGoldragon/signal-domain-criome.git", branch = "main" }
+signal-frame               = { git = "https://github.com/LiGoldragon/signal-frame.git", branch = "main" }
+thiserror                  = "2"
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints.rust]
+unsafe_code = "forbid"
+unused      = { level = "warn", priority = -1 }
+dead_code   = "warn"
