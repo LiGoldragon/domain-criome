@@ -15,11 +15,11 @@ use owner_signal_domain_criome::{
 };
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use signal_domain_criome::{
-    Address, Delegation as DomainDelegation, DelegationListing, DelegationQuery, DomainListing,
-    DomainName, DomainNameSystemRecord, DomainQuery, NetworkAddress, Observation,
-    ObservationResult, Operation as DomainOperation, Projection, ProjectionQuery, ProjectionScope,
-    RecordKind, RecordValue, Reply as DomainReply, RequestRejected, ResolutionQuery,
-    ResolutionResult,
+    Address, AuthorityDelegation, AuthorityEndpoint, Delegation as DomainDelegation,
+    DelegationListing, DelegationQuery, DomainListing, DomainName, DomainNameSystemRecord,
+    DomainQuery, NetworkAddress, Observation, ObservationResult, Operation as DomainOperation,
+    Projection, ProjectionQuery, ProjectionScope, RecordKind, RecordValue, Reply as DomainReply,
+    RequestRejected, ResolutionQuery, ResolutionResult,
 };
 use signal_frame::{NonEmpty, Reply as FrameReply, SubReply};
 
@@ -136,6 +136,24 @@ impl RegisteredDelegation {
             name: self.fully_qualified_name(),
             address: NetworkAddress::new(self.target.as_str()),
         })
+    }
+
+    fn authority_delegation(&self) -> Option<AuthorityDelegation> {
+        if self.target.as_str().parse::<IpAddr>().is_ok() {
+            return None;
+        }
+        Some(AuthorityDelegation {
+            domain: self.fully_qualified_name(),
+            endpoint: AuthorityEndpoint::new(self.target.as_str()),
+        })
+    }
+
+    fn covers_name(&self, name: &DomainName) -> bool {
+        let delegation_name = self.fully_qualified_name();
+        name == &delegation_name
+            || name
+                .as_str()
+                .ends_with(&format!(".{}", delegation_name.as_str()))
     }
 }
 
@@ -261,10 +279,16 @@ impl Store {
             });
         }
         if let Some(delegation) = self.delegation_for_name(&query.name) {
+            if let Some(authority) = delegation.authority_delegation() {
+                return DomainReply::NotAuthoritative(authority);
+            }
             return DomainReply::Resolved(ResolutionResult {
                 query,
                 addresses: delegation.address().into_iter().collect(),
             });
+        }
+        if let Some(authority) = self.authority_for_name(&query.name) {
+            return DomainReply::NotAuthoritative(authority);
         }
         DomainReply::RequestRejected(RequestRejected {
             operation: signal_domain_criome::OperationKind::Resolve,
@@ -450,6 +474,16 @@ impl Store {
             .iter()
             .find(|delegation| delegation.fully_qualified_name() == *name)
             .cloned()
+    }
+
+    fn authority_for_name(&self, name: &DomainName) -> Option<AuthorityDelegation> {
+        self.delegations
+            .lock()
+            .expect("delegation registry mutex should not be poisoned")
+            .iter()
+            .filter(|delegation| delegation.covers_name(name))
+            .filter_map(RegisteredDelegation::authority_delegation)
+            .max_by_key(|authority| authority.domain.as_str().len())
     }
 
     fn projection_enabled(&self, domain: &DomainName, requested_scope: ProjectionScope) -> bool {

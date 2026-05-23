@@ -22,9 +22,9 @@ path = "src/bin/domain-criome.rs"
 [dependencies]
 nota-codec                 = { git = "https://github.com/LiGoldragon/nota-codec.git", branch = "main" }
 nota-config                = { git = "https://github.com/LiGoldragon/nota-config.git", branch = "main" }
-owner-signal-domain-criome = { git = "https://github.com/LiGoldragon/owner-signal-domain-criome.git", branch = "main" }
+owner-signal-domain-criome = { git = "https://github.com/LiGoldragon/owner-signal-domain-criome.git", branch = "cloud-domain-criome-runtime" }
 rkyv                       = { version = "0.8", default-features = false, features = ["std", "bytecheck", "little_endian", "pointer_width_32", "unaligned"] }
-signal-domain-criome       = { git = "https://github.com/LiGoldragon/signal-domain-criome.git", branch = "main" }
+signal-domain-criome       = { git = "https://github.com/LiGoldragon/signal-domain-criome.git", branch = "cloud-domain-criome-runtime" }
 signal-frame               = { git = "https://github.com/LiGoldragon/signal-frame.git", branch = "main" }
 thiserror                  = "2"
 

@@ -101,6 +101,41 @@ fn public_record_projection_and_resolution_use_delegation_state() {
 }
 
 #[test]
+fn delegated_authority_returns_not_authoritative_for_descendant_resolution() {
+    let store = Store::new();
+    owner_reply(
+        &store,
+        OwnerOperation::RegisterDomain(Registration {
+            domain: DomainName::new("criome"),
+        }),
+    );
+    owner_reply(
+        &store,
+        OwnerOperation::Delegate(OwnerDelegation {
+            name: DelegationName::new("goldragon"),
+            domain: DomainName::new("criome"),
+            target: DelegationTarget::new("domain-criome://goldragon.criome"),
+        }),
+    );
+
+    let resolution = domain_reply(
+        &store,
+        DomainOperation::Resolve(ResolutionQuery {
+            name: DomainName::new("www.goldragon.criome"),
+            scope: ResolutionScope::Public,
+        }),
+    );
+    let DomainReply::NotAuthoritative(authority) = resolution else {
+        panic!("expected authority delegation");
+    };
+    assert_eq!(authority.domain, DomainName::new("goldragon.criome"));
+    assert_eq!(
+        authority.endpoint.as_str(),
+        "domain-criome://goldragon.criome"
+    );
+}
+
+#[test]
 fn unknown_domains_and_unimplemented_redirect_projection_are_typed_rejections() {
     let store = registered_store();
 
