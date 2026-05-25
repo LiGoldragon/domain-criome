@@ -93,7 +93,7 @@ resolution and projection work should be request-scoped and timeout-bounded.
 
 **Status:** scheduled for migration to schema-language-based contract per `reports/designer/326-v13-spirit-complete-schema-vision.md` + `reports/designer/324-migration-mvp-spirit-handover-re-specification.md`.
 
-**Target:** this component's hand-written `signal_channel!` invocation + Layer 2 Command/Effect + storage types convert to a single `domain-criome/domain-criome.schema` file. The brilliant macro library (`primary-ezqx.1`) reads the schema + emits all the wire types + ShortHeader projection + dispatcher + VersionProjection + storage descriptors.
+**Target:** this component's hand-written `signal_channel!` invocation + Layer 2 Command/Effect + storage types convert to a single `domain-criome/domain-criome.schema` file. The `schema-rust` composer library, invoked through the `emit_schema!` proc-macro, walks `AssembledSchema` top-down and emits the wire types + ShortHeader projection + dispatcher + VersionProjection + storage descriptors. The legacy `signal-frame/macros/` infrastructure is deleted as part of this migration — emission is a fresh top-down composer, not a wrapping of `signal_channel!`. See `reports/designer/340-schema-emission-no-legacy-signal-channel-2026-05-25.md` + `reports/operator/184-schema-macro-old-emitter-audit-2026-05-25.md`.
 
 **Sequence:** per `primary-kbmi.2`. Spirit is the MVP pilot landing first via `primary-ezqx.1`; schema cutover after cloud (cloud is the upstream coordination point per `primary-kbmi.1`). Domain-criome's projection-to-cloud path means cloud's schema needs to land first so domain-criome can resolve its projection record types against cloud's schema-published types.
 
