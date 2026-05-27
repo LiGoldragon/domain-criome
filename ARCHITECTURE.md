@@ -58,9 +58,16 @@ Per Spirit records 321 and 322 (Maximum certainty, 2026-05-23):
   `skills/feature-development.md` §"When the repo is already locked", since
   the canonical `domain-criome` checkout is exclusive to repo-shape changes.
 
-## Actor Shape
+## Runtime Shape
 
-The first daemon should use one actor per concern:
+The current prototype uses an in-memory `Store` with mutex-protected registry,
+delegation, projection-policy, and projection-state vectors. It binds ordinary
+and owner sockets, decodes real `signal-frame` frames, and serves both contract
+surfaces through the same path the CLI uses. This is intentionally the same
+production-first concession as `cloud`: sema-engine persistence and actor
+splitting wait until the hand-written prototype proves the domain model.
+
+The target daemon shape remains one actor per concern:
 
 - `RegistryStore` for registered domains and delegations;
 - `ProjectionEngine` for provider-neutral desired-state projection;
@@ -70,16 +77,26 @@ The first daemon should use one actor per concern:
 The projection engine must not block the ordinary or owner listener. Slow
 resolution and projection work should be request-scoped and timeout-bounded.
 
-## First Implementation Slice
+## Current Implementation Slice
 
 1. Bind ordinary and owner Unix sockets.
 2. Decode `signal-domain-criome` and `owner-signal-domain-criome` frames.
-3. Store domain registrations, delegations, and projection policy in
-   sema-engine.
-4. Resolve a registered public domain from local state.
+3. Store domain registrations, delegations, projection policy, and projection
+   declarations in memory.
+4. Resolve a registered public domain from configured projection records.
 5. Project public records for a registered domain.
 6. Project redirect rules for a registered domain.
-7. Add a daemon-to-daemon path that sends projections to `cloud`.
+7. Hand the resulting provider-neutral projection to `cloud` through
+   `owner-signal-cloud::PrepareProjection`.
+
+## Remaining Runtime Growth
+
+- Persist registry, delegation, projection-policy, and projection-state records
+  in sema-engine after the deprecated `signal-core` dependency is gone from the
+  storage path.
+- Split the in-memory store into the target actor topology.
+- Replace the manual projection handoff with the designed daemon-to-daemon path
+  that sends authorized projections to `cloud`.
 
 ## Hard Constraints
 
