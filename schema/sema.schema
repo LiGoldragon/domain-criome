@@ -1,0 +1,64 @@
+;; domain-criome SEMA plane schema — daemon-owned.
+;;
+;; Runtime implementation schema, not a Signal contract. It names registry,
+;; delegation, projection policy, and projection state tables owned by the
+;; domain-criome daemon.
+
+{
+  Observation signal-domain-criome:lib:Observation
+  ResolutionQuery signal-domain-criome:lib:ResolutionQuery
+  ProjectionQuery signal-domain-criome:lib:ProjectionQuery
+  Validation signal-domain-criome:lib:Validation
+  Observed signal-domain-criome:lib:Observed
+  Resolved signal-domain-criome:lib:Resolved
+  Projected signal-domain-criome:lib:Projected
+  Validated signal-domain-criome:lib:Validated
+  Domain signal-domain-criome:lib:Domain
+  Projection signal-domain-criome:lib:Projection
+  Registration owner-signal-domain-criome:lib:Registration
+  Delegation owner-signal-domain-criome:lib:Delegation
+  Retirement owner-signal-domain-criome:lib:Retirement
+  Policy owner-signal-domain-criome:lib:Policy
+  ProjectionDeclaration owner-signal-domain-criome:lib:ProjectionDeclaration
+  DomainRegistered owner-signal-domain-criome:lib:DomainRegistered
+  DelegationSet owner-signal-domain-criome:lib:DelegationSet
+  DomainRetired owner-signal-domain-criome:lib:DomainRetired
+  PolicySet owner-signal-domain-criome:lib:PolicySet
+  ProjectionSet owner-signal-domain-criome:lib:ProjectionSet
+  RequestRejected owner-signal-domain-criome:lib:RequestRejected
+}
+[ReadInput WriteInput]
+[ReadOutput WriteOutput]
+{
+  ReadInput [Observe Resolve Project Validate]
+  Observe Observation
+  Resolve ResolutionQuery
+  Project ProjectionQuery
+  Validate Validation
+
+  ReadOutput [Observed Resolved Projected Validated Missed]
+  Missed RejectionReport
+
+  WriteInput [RegisterDomain Delegate RetireDomain SetPolicy SetProjection]
+  RegisterDomain Registration
+  Delegate Delegation
+  RetireDomain Retirement
+  SetPolicy Policy
+  SetProjection ProjectionDeclaration
+
+  WriteOutput [DomainRegistered DelegationSet DomainRetired PolicySet ProjectionSet RequestRejected]
+
+  RejectionReport { reason RejectionReason marker StateMarker }
+  RejectionReason [DomainUnknown NotAuthoritative DomainAlreadyRegistered ProjectionRejected]
+  StateMarker { CommitSequence * StateDigest * }
+  CommitSequence Integer
+  StateDigest Integer
+
+  RegistryTable { domains (Vec RegisteredDomain) delegations (Vec DelegationRecord) }
+  RegisteredDomain { domain Domain authority AuthorityEndpoint marker StateMarker }
+  DelegationRecord { domain Domain authority AuthorityEndpoint marker StateMarker }
+  ProjectionTable { projections (Vec ProjectionRecord) }
+  ProjectionRecord { domain Domain projection Projection marker StateMarker }
+  AuthorityEndpoint String
+}
+

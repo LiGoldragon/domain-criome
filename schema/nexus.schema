@@ -1,0 +1,35 @@
+;; domain-criome Nexus plane schema — daemon-owned.
+;;
+;; Runtime implementation schema, not a Signal contract. It imports ordinary
+;; and owner Signal roots plus local SEMA roots, then names the daemon decision
+;; language.
+
+{
+  OrdinaryInput signal-domain-criome:lib:Input
+  OrdinaryOutput signal-domain-criome:lib:Output
+  OwnerInput owner-signal-domain-criome:lib:Input
+  OwnerOutput owner-signal-domain-criome:lib:Output
+  SemaReadInput domain-criome:sema:ReadInput
+  SemaReadOutput domain-criome:sema:ReadOutput
+  SemaWriteInput domain-criome:sema:WriteInput
+  SemaWriteOutput domain-criome:sema:WriteOutput
+}
+[SignalArrived SemaReadCompleted SemaWriteCompleted]
+[CommandSemaRead CommandSemaWrite ReplyToSignal Continue]
+{
+  SignalArrived SignalInput
+  SemaReadCompleted SemaReadOutput
+  SemaWriteCompleted SemaWriteOutput
+
+  CommandSemaRead SemaReadInput
+  CommandSemaWrite SemaWriteInput
+  ReplyToSignal SignalOutput
+  Continue NexusInput
+
+  SignalInput [OrdinaryInput OwnerInput]
+  SignalOutput [OrdinaryOutput OwnerOutput]
+
+  NexusInput [SignalArrived SemaReadCompleted SemaWriteCompleted]
+  NexusOutput [CommandSemaRead CommandSemaWrite ReplyToSignal Continue]
+}
+

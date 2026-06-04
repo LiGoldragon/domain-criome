@@ -115,14 +115,20 @@ component schema:
   observation, projection, and validation messages.
 - `owner-signal-domain-criome` owns the owner-only Signal schema for registry,
   delegation, policy, and projection-declaration mutations.
-- `domain-criome/schema/nexus.concept.schema` names the daemon-owned Nexus
-  decision plane and imports the two contract `Input`/`Output` roots plus SEMA
+- `domain-criome/schema/nexus.schema` names the daemon-owned Nexus
+  decision plane schema and imports the two contract `Input`/`Output` roots plus SEMA
   roots.
-- `domain-criome/schema/sema.concept.schema` names the daemon-owned SEMA state
+- `domain-criome/schema/sema.schema` names the daemon-owned SEMA state
   plane for registry, delegation, projection policy, and projection state.
 
 Signal contract repositories carry only the wire vocabulary that clients send
 and receive. Nexus decisions, SEMA state, daemon storage, and the projection
-runtime belong in this runtime crate. The projection-to-cloud path still waits
-for compatible cloud contract types before the generated domain-criome runtime
-can fully replace the hand-written prototype.
+runtime belong in this runtime crate.
+
+`domain-criome/schema/nexus.schema` and `domain-criome/schema/sema.schema` are
+runtime implementation schema files. Generated daemon code still waits for the
+ordinary and owner contract schemas to become real schema-derived modules on
+this repo family, and for schema-next to expose/import contract `Input`/`Output`
+roots across crates. The projection-to-cloud path also waits for compatible
+cloud contract types before the generated domain-criome runtime can fully
+replace the hand-written prototype.
