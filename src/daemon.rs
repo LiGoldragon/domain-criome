@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use signal_frame::ExchangeFrameBody;
 
-use crate::frame_io::{HandshakeCompatibility, OrdinaryFrameIo, OwnerFrameIo};
+use crate::frame_io::{HandshakeCompatibility, MetaFrameIo, OrdinaryFrameIo};
 use crate::{DaemonConfiguration, Error, Result, Store};
 
 pub struct Daemon {
@@ -142,22 +142,22 @@ impl<'store, 'stream> OwnerStreamRuntime<'store, 'stream> {
 
     pub fn serve(&mut self) -> Result<()> {
         loop {
-            let frame = OwnerFrameIo::new(self.stream).read()?;
+            let frame = MetaFrameIo::new(self.stream).read()?;
             match frame.into_body() {
                 ExchangeFrameBody::HandshakeRequest(request) => {
-                    let reply = owner_signal_domain_criome::Frame::new(
-                        owner_signal_domain_criome::FrameBody::HandshakeReply(
+                    let reply = meta_signal_domain_criome::Frame::new(
+                        meta_signal_domain_criome::FrameBody::HandshakeReply(
                             HandshakeCompatibility::current().reply_for(request.version()),
                         ),
                     );
-                    OwnerFrameIo::new(self.stream).write(&reply)?;
+                    MetaFrameIo::new(self.stream).write(&reply)?;
                 }
                 ExchangeFrameBody::Request { exchange, request } => {
                     let reply = self.store.handle_owner_request(request);
-                    let frame = owner_signal_domain_criome::Frame::new(
-                        owner_signal_domain_criome::FrameBody::Reply { exchange, reply },
+                    let frame = meta_signal_domain_criome::Frame::new(
+                        meta_signal_domain_criome::FrameBody::Reply { exchange, reply },
                     );
-                    OwnerFrameIo::new(self.stream).write(&frame)?;
+                    MetaFrameIo::new(self.stream).write(&frame)?;
                     return Ok(());
                 }
                 _ => return Err(Error::UnexpectedFrame),
@@ -208,25 +208,25 @@ impl<'store, 'stream> SharedStreamRuntime<'store, 'stream> {
 
     pub fn serve_owner(&mut self) -> Result<()> {
         loop {
-            let frame = OwnerFrameIo::new(self.stream).read()?;
+            let frame = MetaFrameIo::new(self.stream).read()?;
             match frame.into_body() {
                 ExchangeFrameBody::HandshakeRequest(request) => {
-                    let reply = owner_signal_domain_criome::Frame::new(
-                        owner_signal_domain_criome::FrameBody::HandshakeReply(
+                    let reply = meta_signal_domain_criome::Frame::new(
+                        meta_signal_domain_criome::FrameBody::HandshakeReply(
                             HandshakeCompatibility::current().reply_for(request.version()),
                         ),
                     );
-                    OwnerFrameIo::new(self.stream).write(&reply)?;
+                    MetaFrameIo::new(self.stream).write(&reply)?;
                 }
                 ExchangeFrameBody::Request { exchange, request } => {
                     let reply = {
                         let store = self.store.lock().map_err(|_| Error::StorePoisoned)?;
                         store.handle_owner_request(request)
                     };
-                    let frame = owner_signal_domain_criome::Frame::new(
-                        owner_signal_domain_criome::FrameBody::Reply { exchange, reply },
+                    let frame = meta_signal_domain_criome::Frame::new(
+                        meta_signal_domain_criome::FrameBody::Reply { exchange, reply },
                     );
-                    OwnerFrameIo::new(self.stream).write(&frame)?;
+                    MetaFrameIo::new(self.stream).write(&frame)?;
                     return Ok(());
                 }
                 _ => return Err(Error::UnexpectedFrame),

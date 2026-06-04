@@ -3,15 +3,15 @@ use std::io::Write;
 use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
 
+use meta_signal_domain_criome::{ChannelRequest as MetaRequest, Reply as MetaReply};
 use nota_codec::{Decoder, Encoder, NotaDecode, NotaEncode, Token};
-use owner_signal_domain_criome::{ChannelRequest as OwnerRequest, Reply as OwnerReply};
 use signal_domain_criome::{Reply as DomainReply, Request as DomainRequest};
 use signal_frame::{
     CommandLineSocket, ExchangeFrameBody, ExchangeIdentifier, ExchangeLane, HandshakeReply,
     HandshakeRequest, LaneSequence, Reply as FrameReply, SessionEpoch, SubReply,
 };
 
-use crate::frame_io::{OrdinaryFrameIo, OwnerFrameIo};
+use crate::frame_io::{MetaFrameIo, OrdinaryFrameIo};
 use crate::{Error, Result};
 
 const DEFAULT_ORDINARY_SOCKET_PATH: &str = "/run/domain-criome/domain-criome.sock";
@@ -22,7 +22,7 @@ const OWNER_SOCKET_ENVIRONMENT_VARIABLE: &str = "DOMAIN_CRIOME_OWNER_SOCKET_PATH
 signal_frame::signal_cli! {
     pub struct CommandLineDispatch {
         working signal_domain_criome::Operation;
-        owner owner_signal_domain_criome::Operation;
+        owner meta_signal_domain_criome::Operation;
     }
 }
 
@@ -71,23 +71,21 @@ impl Client {
         }
     }
 
-    pub fn send_owner(&self, request: OwnerRequest) -> Result<OwnerReply> {
+    pub fn send_owner(&self, request: MetaRequest) -> Result<MetaReply> {
         let mut stream = UnixStream::connect(&self.owner_socket_path)?;
         self.handshake_owner(&mut stream)?;
         let exchange = ExchangeFactory::new().fresh_exchange();
-        let frame = owner_signal_domain_criome::Frame::new(ExchangeFrameBody::Request {
-            exchange,
-            request,
-        });
-        OwnerFrameIo::new(&mut stream).write(&frame)?;
+        let frame =
+            meta_signal_domain_criome::Frame::new(ExchangeFrameBody::Request { exchange, request });
+        MetaFrameIo::new(&mut stream).write(&frame)?;
         stream.flush()?;
 
-        let reply = OwnerFrameIo::new(&mut stream).read()?;
+        let reply = MetaFrameIo::new(&mut stream).read()?;
         match reply.into_body() {
             ExchangeFrameBody::Reply {
                 exchange: reply_exchange,
                 reply,
-            } if reply_exchange == exchange => OwnerReplyEnvelope::new(reply).unwrap_single_reply(),
+            } if reply_exchange == exchange => MetaReplyEnvelope::new(reply).unwrap_single_reply(),
             _ => Err(Error::UnexpectedFrame),
         }
     }
@@ -123,11 +121,11 @@ impl Client {
     }
 
     fn handshake_owner(&self, stream: &mut UnixStream) -> Result<()> {
-        let frame = owner_signal_domain_criome::Frame::new(ExchangeFrameBody::HandshakeRequest(
+        let frame = meta_signal_domain_criome::Frame::new(ExchangeFrameBody::HandshakeRequest(
             HandshakeRequest::current(),
         ));
-        OwnerFrameIo::new(stream).write(&frame)?;
-        let reply = OwnerFrameIo::new(stream).read()?;
+        MetaFrameIo::new(stream).write(&frame)?;
+        let reply = MetaFrameIo::new(stream).read()?;
         match reply.into_body() {
             ExchangeFrameBody::HandshakeReply(HandshakeReply::Accepted(_)) => Ok(()),
             ExchangeFrameBody::HandshakeReply(HandshakeReply::Rejected(_)) => {
@@ -141,7 +139,7 @@ impl Client {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CliRequest {
     Working(DomainRequest),
-    Owner(OwnerRequest),
+    Owner(MetaRequest),
 }
 
 impl CliRequest {
@@ -185,7 +183,7 @@ impl CliRequest {
 
     fn decode_owner(text: &str) -> Result<Self> {
         let mut decoder = Decoder::new(text);
-        let payload = OwnerRequest::decode(&mut decoder)?;
+        let payload = MetaRequest::decode(&mut decoder)?;
         RequestEnd::new(&mut decoder).expect()?;
         Ok(Self::Owner(payload))
     }
@@ -276,16 +274,16 @@ impl ReplyEnvelope {
     }
 }
 
-pub struct OwnerReplyEnvelope {
-    reply: FrameReply<OwnerReply>,
+pub struct MetaReplyEnvelope {
+    reply: FrameReply<MetaReply>,
 }
 
-impl OwnerReplyEnvelope {
-    pub fn new(reply: FrameReply<OwnerReply>) -> Self {
+impl MetaReplyEnvelope {
+    pub fn new(reply: FrameReply<MetaReply>) -> Self {
         Self { reply }
     }
 
-    pub fn unwrap_single_reply(self) -> Result<OwnerReply> {
+    pub fn unwrap_single_reply(self) -> Result<MetaReply> {
         match self.reply {
             FrameReply::Accepted { per_operation, .. } => {
                 match per_operation.into_head_and_tail() {

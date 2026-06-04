@@ -69,33 +69,33 @@ where
     }
 }
 
-pub struct OwnerFrameIo<'stream, Stream> {
+pub struct MetaFrameIo<'stream, Stream> {
     stream: &'stream mut Stream,
 }
 
-impl<'stream, Stream> OwnerFrameIo<'stream, Stream> {
+impl<'stream, Stream> MetaFrameIo<'stream, Stream> {
     pub fn new(stream: &'stream mut Stream) -> Self {
         Self { stream }
     }
 }
 
-impl<Stream> OwnerFrameIo<'_, Stream>
+impl<Stream> MetaFrameIo<'_, Stream>
 where
     Stream: Read,
 {
-    pub fn read(&mut self) -> Result<owner_signal_domain_criome::Frame> {
+    pub fn read(&mut self) -> Result<meta_signal_domain_criome::Frame> {
         let bytes = FrameBytes::read_from(self.stream)?;
-        Ok(owner_signal_domain_criome::Frame::decode_length_prefixed(
+        Ok(meta_signal_domain_criome::Frame::decode_length_prefixed(
             bytes.as_slice(),
         )?)
     }
 }
 
-impl<Stream> OwnerFrameIo<'_, Stream>
+impl<Stream> MetaFrameIo<'_, Stream>
 where
     Stream: Write,
 {
-    pub fn write(&mut self, frame: &owner_signal_domain_criome::Frame) -> Result<()> {
+    pub fn write(&mut self, frame: &meta_signal_domain_criome::Frame) -> Result<()> {
         let bytes = frame.encode_length_prefixed()?;
         self.stream.write_all(&bytes)?;
         Ok(())

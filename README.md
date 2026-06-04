@@ -9,7 +9,7 @@ hand-written Signal / NOTA stack:
 - `domain-criome-daemon` owns in-memory domain registry, delegation,
   projection policy, and provider-neutral projection state.
 - `signal-domain-criome` carries ordinary `Observe`, `Resolve`, and `Project`.
-- `owner-signal-domain-criome` carries owner `RegisterDomain`, `Delegate`,
+- `meta-signal-domain-criome` carries owner `RegisterDomain`, `Delegate`,
   `SetPolicy`, `SetProjection`, and retirement.
 
 The runtime still avoids provider vocabulary and provider credentials.

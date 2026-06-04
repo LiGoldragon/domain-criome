@@ -5,11 +5,11 @@ use domain_criome::Store;
 use domain_criome::client::{CliRequest, CommandLineDispatch};
 use domain_criome::daemon::Daemon;
 use domain_criome::frame_io::OrdinaryFrameIo;
-use nota_codec::NotaEncode;
-use owner_signal_domain_criome::{
-    Operation as OwnerOperation, ProjectionDeclaration, ProjectionDirective, ProjectionPolicy,
+use meta_signal_domain_criome::{
+    Operation as MetaOperation, ProjectionDeclaration, ProjectionDirective, ProjectionPolicy,
     Registration,
 };
+use nota_codec::NotaEncode;
 use signal_domain_criome::{
     DomainName, DomainNameSystemRecord, Operation as DomainOperation, Projection, ProjectionQuery,
     ProjectionScope, RecordKind, RecordValue, Reply as DomainReply, ResolutionQuery,
@@ -49,7 +49,7 @@ fn accepted_domain_reply(reply: signal_domain_criome::ChannelReply) -> DomainRep
 }
 
 fn configure_projection(store: &Store) {
-    let register = OwnerOperation::RegisterDomain(Registration {
+    let register = MetaOperation::RegisterDomain(Registration {
         domain: DomainName::new("goldragon.criome"),
     })
     .into_request();
@@ -58,7 +58,7 @@ fn configure_projection(store: &Store) {
         FrameReply::Accepted { .. }
     ));
 
-    let policy = OwnerOperation::SetPolicy(owner_signal_domain_criome::Policy {
+    let policy = MetaOperation::SetPolicy(meta_signal_domain_criome::Policy {
         projections: vec![ProjectionPolicy {
             domain: DomainName::new("goldragon.criome"),
             scope: ProjectionScope::Everything,
@@ -71,7 +71,7 @@ fn configure_projection(store: &Store) {
         FrameReply::Accepted { .. }
     ));
 
-    let projection = OwnerOperation::SetProjection(ProjectionDeclaration {
+    let projection = MetaOperation::SetProjection(ProjectionDeclaration {
         domain: DomainName::new("goldragon.criome"),
         records: vec![DomainNameSystemRecord {
             name: DomainName::new("goldragon.criome"),
@@ -179,7 +179,7 @@ fn command_line_dispatch_routes_working_and_owner_heads() {
         domain: DomainName::new("goldragon.criome"),
         scope: ProjectionScope::PublicRecords,
     });
-    let owner = OwnerOperation::SetProjection(ProjectionDeclaration {
+    let owner = MetaOperation::SetProjection(ProjectionDeclaration {
         domain: DomainName::new("goldragon.criome"),
         records: vec![],
         redirects: vec![],

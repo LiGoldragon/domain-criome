@@ -32,7 +32,18 @@
           "rust-src"
         ];
         craneLib = (crane.mkLib pkgs).overrideToolchain toolchain;
-        src = craneLib.cleanCargoSource ./.;
+        schemaFilter = path: type:
+          type == "regular" && (
+            pkgs.lib.hasSuffix ".schema" path
+            || pkgs.lib.hasSuffix ".asschema" path
+          );
+        sourceFilter = path: type:
+          type == "directory" || (craneLib.filterCargoSources path type) || (schemaFilter path type);
+        src = pkgs.lib.cleanSourceWith {
+          src = ./.;
+          filter = sourceFilter;
+          name = "source";
+        };
         commonArgs = {
           inherit src;
           strictDeps = true;

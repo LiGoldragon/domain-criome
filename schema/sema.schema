@@ -15,17 +15,17 @@
   Validated signal-domain-criome:lib:Validated
   Domain signal-domain-criome:lib:Domain
   Projection signal-domain-criome:lib:Projection
-  Registration owner-signal-domain-criome:lib:Registration
-  Delegation owner-signal-domain-criome:lib:Delegation
-  Retirement owner-signal-domain-criome:lib:Retirement
-  Policy owner-signal-domain-criome:lib:Policy
-  ProjectionDeclaration owner-signal-domain-criome:lib:ProjectionDeclaration
-  DomainRegistered owner-signal-domain-criome:lib:DomainRegistered
-  DelegationSet owner-signal-domain-criome:lib:DelegationSet
-  DomainRetired owner-signal-domain-criome:lib:DomainRetired
-  PolicySet owner-signal-domain-criome:lib:PolicySet
-  ProjectionSet owner-signal-domain-criome:lib:ProjectionSet
-  RequestRejected owner-signal-domain-criome:lib:RequestRejected
+  Registration meta-signal-domain-criome:lib:Registration
+  Delegation meta-signal-domain-criome:lib:Delegation
+  Retirement meta-signal-domain-criome:lib:Retirement
+  Policy meta-signal-domain-criome:lib:Policy
+  ProjectionDeclaration meta-signal-domain-criome:lib:ProjectionDeclaration
+  DomainRegistered meta-signal-domain-criome:lib:DomainRegistered
+  DelegationSet meta-signal-domain-criome:lib:DelegationSet
+  DomainRetired meta-signal-domain-criome:lib:DomainRetired
+  PolicySet meta-signal-domain-criome:lib:PolicySet
+  ProjectionSet meta-signal-domain-criome:lib:ProjectionSet
+  RequestRejected meta-signal-domain-criome:lib:RequestRejected
 }
 [ReadInput WriteInput]
 [ReadOutput WriteOutput]
@@ -61,4 +61,3 @@
   ProjectionRecord { domain Domain projection Projection marker StateMarker }
   AuthorityEndpoint String
 }
-

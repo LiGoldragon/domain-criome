@@ -8,7 +8,7 @@ This repository is the runtime leg of the `domain-criome` triad:
 - `domain-criome` will be the thin CLI client that speaks only to
   `domain-criome-daemon`.
 - `signal-domain-criome` is the ordinary peer contract.
-- `owner-signal-domain-criome` is the owner-only authority contract.
+- `meta-signal-domain-criome` is the meta (owner-only policy) authority contract.
 
 Do not add provider API calls here. Cloud-provider execution belongs to the
 `cloud` component.

@@ -41,7 +41,7 @@ impl SchemaBuild {
 
 struct ContractSchemaDependencies {
     ordinary_signal: Option<DependencySchema>,
-    owner_signal: Option<DependencySchema>,
+    meta_signal: Option<DependencySchema>,
 }
 
 impl ContractSchemaDependencies {
@@ -53,18 +53,18 @@ impl ContractSchemaDependencies {
                 "0.1.0",
             )
             .expect("read signal-domain-criome schema metadata"),
-            owner_signal: DependencySchema::from_cargo_metadata(
-                "owner-signal-domain-criome",
-                "owner-signal-domain-criome",
+            meta_signal: DependencySchema::from_cargo_metadata(
+                "meta-signal-domain-criome",
+                "meta-signal-domain-criome",
                 "0.1.0",
             )
-            .expect("read owner-signal-domain-criome schema metadata"),
+            .expect("read meta-signal-domain-criome schema metadata"),
         }
     }
 
     fn emit_rerun_instructions(&self) {
         println!("cargo:rerun-if-env-changed=DEP_SIGNAL_DOMAIN_CRIOME_SCHEMA_DIR");
-        println!("cargo:rerun-if-env-changed=DEP_OWNER_SIGNAL_DOMAIN_CRIOME_SCHEMA_DIR");
+        println!("cargo:rerun-if-env-changed=DEP_META_SIGNAL_DOMAIN_CRIOME_SCHEMA_DIR");
     }
 
     fn into_generation_plan(
@@ -73,14 +73,14 @@ impl ContractSchemaDependencies {
         crate_name: &str,
         version: &str,
     ) -> Option<GenerationPlan> {
-        match (self.ordinary_signal, self.owner_signal) {
-            (Some(ordinary_signal), Some(owner_signal)) => Some(
+        match (self.ordinary_signal, self.meta_signal) {
+            (Some(ordinary_signal), Some(meta_signal)) => Some(
                 GenerationPlan::daemon_runtime(crate_root, crate_name, version)
                     .with_dependency_schema(ordinary_signal)
-                    .with_dependency_schema(owner_signal),
+                    .with_dependency_schema(meta_signal),
             ),
-            (ordinary_signal, owner_signal) => {
-                MissingContractSchemas::new(ordinary_signal, owner_signal).warn_and_skip();
+            (ordinary_signal, meta_signal) => {
+                MissingContractSchemas::new(ordinary_signal, meta_signal).warn_and_skip();
                 None
             }
         }
@@ -89,17 +89,17 @@ impl ContractSchemaDependencies {
 
 struct MissingContractSchemas {
     ordinary_signal: Option<DependencySchema>,
-    owner_signal: Option<DependencySchema>,
+    meta_signal: Option<DependencySchema>,
 }
 
 impl MissingContractSchemas {
     fn new(
         ordinary_signal: Option<DependencySchema>,
-        owner_signal: Option<DependencySchema>,
+        meta_signal: Option<DependencySchema>,
     ) -> Self {
         Self {
             ordinary_signal,
-            owner_signal,
+            meta_signal,
         }
     }
 
@@ -115,8 +115,8 @@ impl MissingContractSchemas {
         if self.ordinary_signal.is_none() {
             names.push("signal-domain-criome");
         }
-        if self.owner_signal.is_none() {
-            names.push("owner-signal-domain-criome");
+        if self.meta_signal.is_none() {
+            names.push("meta-signal-domain-criome");
         }
         names
     }

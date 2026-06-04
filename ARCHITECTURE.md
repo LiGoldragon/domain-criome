@@ -8,7 +8,7 @@ can ask for intelligent resolution and provider-neutral desired domain state.
 
 - Runtime repo: `domain-criome`.
 - Ordinary contract: `signal-domain-criome`.
-- Owner contract: `owner-signal-domain-criome`.
+- Meta contract: `meta-signal-domain-criome`.
 
 The CLI is bundled runtime machinery, not a separate triad leg. The CLI has
 exactly one Signal peer: `domain-criome-daemon`.
@@ -80,14 +80,14 @@ resolution and projection work should be request-scoped and timeout-bounded.
 ## Current Implementation Slice
 
 1. Bind ordinary and owner Unix sockets.
-2. Decode `signal-domain-criome` and `owner-signal-domain-criome` frames.
+2. Decode `signal-domain-criome` and `meta-signal-domain-criome` frames.
 3. Store domain registrations, delegations, projection policy, and projection
    declarations in memory.
 4. Resolve a registered public domain from configured projection records.
 5. Project public records for a registered domain.
 6. Project redirect rules for a registered domain.
 7. Hand the resulting provider-neutral projection to `cloud` through
-   `owner-signal-cloud::PrepareProjection`.
+   `meta-signal-cloud::PrepareProjection`.
 
 ## Remaining Runtime Growth
 
@@ -113,11 +113,11 @@ component schema:
 
 - `signal-domain-criome` owns the ordinary Signal schema for public resolution,
   observation, projection, and validation messages.
-- `owner-signal-domain-criome` owns the owner-only Signal schema for registry,
-  delegation, policy, and projection-declaration mutations.
+- `meta-signal-domain-criome` owns the meta (owner-only policy) Signal schema
+  for registry, delegation, policy, and projection-declaration mutations.
 - `domain-criome/schema/nexus.schema` names the daemon-owned Nexus
-  decision plane schema and imports the two contract `Input`/`Output` roots plus SEMA
-  roots.
+  decision plane schema and imports the two contract `Input`/`Output` roots
+  plus SEMA roots.
 - `domain-criome/schema/sema.schema` names the daemon-owned SEMA state
   plane for registry, delegation, projection policy, and projection state.
 
@@ -128,11 +128,7 @@ runtime belong in this runtime crate.
 `domain-criome/build.rs` is wired to the shared `schema_rust_next::build`
 driver for daemon runtime schemas: `schema/nexus.schema` targets
 `NexusRuntime`, and `schema/sema.schema` targets `SemaRuntime`. The build
-currently skips generation unless dependency build metadata exposes the
-ordinary `signal-domain-criome` schema directory and the owner
-`owner-signal-domain-criome` schema directory. That skip is intentional: the
-contract repos still need real schema-derived modules plus Cargo `links`
-metadata, and the daemon must not hard-code local checkout paths to compensate.
-The projection-to-cloud path also waits for compatible cloud contract types
-before the generated domain-criome runtime can fully replace the hand-written
-prototype.
+consumes the ordinary `signal-domain-criome` schema directory and the meta
+`meta-signal-domain-criome` schema directory from Cargo metadata, then
+freshness-checks `schema/*.asschema` and `src/schema/{nexus,sema}.rs`. The
+daemon must not hard-code local checkout paths for contract schemas.

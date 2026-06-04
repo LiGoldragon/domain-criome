@@ -6,13 +6,13 @@
 use std::path::Path;
 use std::sync::Mutex;
 
-use nota_codec::NotaRecord;
-use owner_signal_domain_criome::{
+use meta_signal_domain_criome::{
     Delegation as OwnerDelegation, DomainDelegated, DomainRegistered, DomainRetired,
-    Operation as OwnerOperation, PolicySet, ProjectionDeclaration, ProjectionDirective,
-    ProjectionPolicy, ProjectionSet, Registration, Reply as OwnerReply,
-    RequestRejected as OwnerRequestRejected, Retirement,
+    Operation as MetaOperation, PolicySet, ProjectionDeclaration, ProjectionDirective,
+    ProjectionPolicy, ProjectionSet, Registration, Reply as MetaReply,
+    RequestRejected as MetaRequestRejected, Retirement,
 };
+use nota_codec::NotaRecord;
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use signal_domain_criome::{
     Address, Delegation, DelegationListing, DelegationQuery, DomainListing, DomainName,
@@ -169,7 +169,7 @@ impl<'record> AddressProjection<'record> {
 pub struct Store {
     domains: Mutex<Vec<DomainName>>,
     delegations: Mutex<Vec<OwnerDelegation>>,
-    policy: Mutex<owner_signal_domain_criome::Policy>,
+    policy: Mutex<meta_signal_domain_criome::Policy>,
     projections: Mutex<Vec<ProjectionState>>,
 }
 
@@ -178,7 +178,7 @@ impl Store {
         Self {
             domains: Mutex::new(Vec::new()),
             delegations: Mutex::new(Vec::new()),
-            policy: Mutex::new(owner_signal_domain_criome::Policy {
+            policy: Mutex::new(meta_signal_domain_criome::Policy {
                 projections: Vec::new(),
             }),
             projections: Mutex::new(Vec::new()),
@@ -205,8 +205,8 @@ impl Store {
 
     pub fn handle_owner_request(
         &self,
-        request: owner_signal_domain_criome::ChannelRequest,
-    ) -> owner_signal_domain_criome::ChannelReply {
+        request: meta_signal_domain_criome::ChannelRequest,
+    ) -> meta_signal_domain_criome::ChannelReply {
         let replies = request
             .payloads
             .into_iter()
@@ -225,13 +225,13 @@ impl Store {
         }
     }
 
-    fn handle_owner_operation(&self, operation: OwnerOperation) -> OwnerReply {
+    fn handle_owner_operation(&self, operation: MetaOperation) -> MetaReply {
         match operation {
-            OwnerOperation::RegisterDomain(registration) => self.register_domain(registration),
-            OwnerOperation::Delegate(delegation) => self.delegate(delegation),
-            OwnerOperation::RetireDomain(retirement) => self.retire_domain(retirement),
-            OwnerOperation::SetPolicy(policy) => self.set_policy(policy),
-            OwnerOperation::SetProjection(declaration) => self.set_projection(declaration),
+            MetaOperation::RegisterDomain(registration) => self.register_domain(registration),
+            MetaOperation::Delegate(delegation) => self.delegate(delegation),
+            MetaOperation::RetireDomain(retirement) => self.retire_domain(retirement),
+            MetaOperation::SetPolicy(policy) => self.set_policy(policy),
+            MetaOperation::SetProjection(declaration) => self.set_projection(declaration),
         }
     }
 
@@ -318,48 +318,48 @@ impl Store {
         DelegationListing { delegations }
     }
 
-    fn register_domain(&self, registration: Registration) -> OwnerReply {
+    fn register_domain(&self, registration: Registration) -> MetaReply {
         let mut domains = self.domains.lock().expect("domains mutex");
         if domains.iter().any(|domain| domain == &registration.domain) {
-            return OwnerReply::RequestRejected(OwnerRequestRejected {
-                operation: owner_signal_domain_criome::OperationKind::RegisterDomain,
-                reason: owner_signal_domain_criome::RejectionReason::DomainAlreadyRegistered,
+            return MetaReply::RequestRejected(MetaRequestRejected {
+                operation: meta_signal_domain_criome::OperationKind::RegisterDomain,
+                reason: meta_signal_domain_criome::RejectionReason::DomainAlreadyRegistered,
             });
         }
         domains.push(registration.domain.clone());
-        OwnerReply::DomainRegistered(DomainRegistered {
+        MetaReply::DomainRegistered(DomainRegistered {
             domain: registration.domain,
         })
     }
 
-    fn delegate(&self, delegation: OwnerDelegation) -> OwnerReply {
+    fn delegate(&self, delegation: OwnerDelegation) -> MetaReply {
         if !self.domain_is_registered(&delegation.domain) {
-            return OwnerReply::RequestRejected(OwnerRequestRejected {
-                operation: owner_signal_domain_criome::OperationKind::Delegate,
-                reason: owner_signal_domain_criome::RejectionReason::DomainUnknown,
+            return MetaReply::RequestRejected(MetaRequestRejected {
+                operation: meta_signal_domain_criome::OperationKind::Delegate,
+                reason: meta_signal_domain_criome::RejectionReason::DomainUnknown,
             });
         }
         let mut delegations = self.delegations.lock().expect("delegations mutex");
         if delegations.iter().any(|existing| {
             existing.domain == delegation.domain && existing.name == delegation.name
         }) {
-            return OwnerReply::RequestRejected(OwnerRequestRejected {
-                operation: owner_signal_domain_criome::OperationKind::Delegate,
-                reason: owner_signal_domain_criome::RejectionReason::DelegationAlreadyExists,
+            return MetaReply::RequestRejected(MetaRequestRejected {
+                operation: meta_signal_domain_criome::OperationKind::Delegate,
+                reason: meta_signal_domain_criome::RejectionReason::DelegationAlreadyExists,
             });
         }
         delegations.push(delegation.clone());
-        OwnerReply::DomainDelegated(DomainDelegated {
+        MetaReply::DomainDelegated(DomainDelegated {
             name: delegation.name,
             domain: delegation.domain,
         })
     }
 
-    fn retire_domain(&self, retirement: Retirement) -> OwnerReply {
+    fn retire_domain(&self, retirement: Retirement) -> MetaReply {
         if !self.domain_is_registered(&retirement.domain) {
-            return OwnerReply::RequestRejected(OwnerRequestRejected {
-                operation: owner_signal_domain_criome::OperationKind::RetireDomain,
-                reason: owner_signal_domain_criome::RejectionReason::DomainUnknown,
+            return MetaReply::RequestRejected(MetaRequestRejected {
+                operation: meta_signal_domain_criome::OperationKind::RetireDomain,
+                reason: meta_signal_domain_criome::RejectionReason::DomainUnknown,
             });
         }
         self.domains
@@ -379,24 +379,24 @@ impl Store {
             .expect("policy mutex")
             .projections
             .retain(|policy| policy.domain != retirement.domain);
-        OwnerReply::DomainRetired(DomainRetired {
+        MetaReply::DomainRetired(DomainRetired {
             domain: retirement.domain,
         })
     }
 
-    fn set_policy(&self, policy: owner_signal_domain_criome::Policy) -> OwnerReply {
+    fn set_policy(&self, policy: meta_signal_domain_criome::Policy) -> MetaReply {
         let projection_policy_count = policy.projections.len() as u64;
         *self.policy.lock().expect("policy mutex") = policy;
-        OwnerReply::PolicySet(PolicySet {
+        MetaReply::PolicySet(PolicySet {
             projection_policy_count,
         })
     }
 
-    fn set_projection(&self, declaration: ProjectionDeclaration) -> OwnerReply {
+    fn set_projection(&self, declaration: ProjectionDeclaration) -> MetaReply {
         if !self.domain_is_registered(&declaration.domain) {
-            return OwnerReply::RequestRejected(OwnerRequestRejected {
-                operation: owner_signal_domain_criome::OperationKind::SetProjection,
-                reason: owner_signal_domain_criome::RejectionReason::DomainUnknown,
+            return MetaReply::RequestRejected(MetaRequestRejected {
+                operation: meta_signal_domain_criome::OperationKind::SetProjection,
+                reason: meta_signal_domain_criome::RejectionReason::DomainUnknown,
             });
         }
         let domain = declaration.domain.clone();
@@ -412,7 +412,7 @@ impl Store {
         } else {
             projections.push(state);
         }
-        OwnerReply::ProjectionSet(ProjectionSet {
+        MetaReply::ProjectionSet(ProjectionSet {
             domain,
             record_count,
             redirect_count,
