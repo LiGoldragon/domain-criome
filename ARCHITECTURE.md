@@ -125,10 +125,14 @@ Signal contract repositories carry only the wire vocabulary that clients send
 and receive. Nexus decisions, SEMA state, daemon storage, and the projection
 runtime belong in this runtime crate.
 
-`domain-criome/schema/nexus.schema` and `domain-criome/schema/sema.schema` are
-runtime implementation schema files. Generated daemon code still waits for the
-ordinary and owner contract schemas to become real schema-derived modules on
-this repo family, and for schema-next to expose/import contract `Input`/`Output`
-roots across crates. The projection-to-cloud path also waits for compatible
-cloud contract types before the generated domain-criome runtime can fully
-replace the hand-written prototype.
+`domain-criome/build.rs` is wired to the shared `schema_rust_next::build`
+driver for daemon runtime schemas: `schema/nexus.schema` targets
+`NexusRuntime`, and `schema/sema.schema` targets `SemaRuntime`. The build
+currently skips generation unless dependency build metadata exposes the
+ordinary `signal-domain-criome` schema directory and the owner
+`owner-signal-domain-criome` schema directory. That skip is intentional: the
+contract repos still need real schema-derived modules plus Cargo `links`
+metadata, and the daemon must not hard-code local checkout paths to compensate.
+The projection-to-cloud path also waits for compatible cloud contract types
+before the generated domain-criome runtime can fully replace the hand-written
+prototype.

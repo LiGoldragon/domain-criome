@@ -69,6 +69,7 @@ dependencies = [
  "nota-config",
  "owner-signal-domain-criome",
  "rkyv",
+ "schema-rust-next",
  "signal-domain-criome",
  "signal-frame",
  "tempfile",
@@ -278,6 +279,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "nota-next"
+version = "0.1.0"
+source = "git+https://github.com/LiGoldragon/nota-next.git?branch=main#b33b5b51ce10aa7f44027b7290bfe008c90e7ce5"
+dependencies = [
+ "nota-next-derive",
+ "rkyv",
+]
+
+[[package]]
+name = "nota-next-derive"
+version = "0.1.0"
+source = "git+https://github.com/LiGoldragon/nota-next.git?branch=main#b33b5b51ce10aa7f44027b7290bfe008c90e7ce5"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -370,6 +390,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "redb"
+version = "2.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8eca1e9d98d5a7e9002d0013e18d5a9b000aee942eb134883a82f06ebffb6c01"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "rend"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -436,6 +465,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "schema-next"
+version = "0.1.1"
+source = "git+https://github.com/LiGoldragon/schema-next.git?branch=main#3f7813cfc7eecb45d372db57650d3558d1362f18"
+dependencies = [
+ "nota-next",
+ "redb",
+ "rkyv",
+]
+
+[[package]]
 name = "schema-rust"
 version = "0.1.0"
 source = "git+https://github.com/LiGoldragon/signal-frame.git?branch=main#d61ebf25997c47c997c0dce1d576f870e3e8383c"
@@ -443,6 +482,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "schema",
+]
+
+[[package]]
+name = "schema-rust-next"
+version = "0.1.3"
+source = "git+https://github.com/LiGoldragon/schema-rust-next.git?branch=main#e25cc3eee37db3cd22341e368c8de69fa77ae27e"
+dependencies = [
+ "schema-next",
+ "thiserror",
 ]
 
 [[package]]

@@ -501,8 +501,7 @@ impl ProjectionPolicySet {
         self.policies
             .iter()
             .filter(|policy| &policy.domain == domain)
-            .filter(|policy| ProjectionScopeMatch::new(policy.scope, scope).matches())
-            .last()
+            .rfind(|policy| ProjectionScopeMatch::new(policy.scope, scope).matches())
             .is_some_and(|policy| policy.directive == ProjectionDirective::Enable)
     }
 }
