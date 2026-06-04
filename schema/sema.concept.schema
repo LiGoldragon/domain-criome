@@ -1,0 +1,52 @@
+;; domain-criome SEMA plane concept — daemon-owned.
+;;
+;; This is not a Signal contract. It names registry, delegation, projection
+;; policy, and projection state tables owned by the domain-criome daemon.
+
+{}
+[ReadInput WriteInput]
+[ReadOutput WriteOutput]
+{
+  ReadInput [Observe Resolve Project Validate]
+  Observe signal-domain-criome::Observation
+  Resolve signal-domain-criome::ResolutionQuery
+  Project signal-domain-criome::ProjectionQuery
+  Validate signal-domain-criome::Validation
+
+  ReadOutput [Observed Resolved Projected Validated Missed]
+  Observed signal-domain-criome::Observed
+  Resolved signal-domain-criome::Resolved
+  Projected signal-domain-criome::Projected
+  Validated signal-domain-criome::Validated
+  Missed RejectionReport
+
+  WriteInput [RegisterDomain Delegate RetireDomain SetPolicy SetProjection]
+  RegisterDomain owner-signal-domain-criome::Registration
+  Delegate owner-signal-domain-criome::Delegation
+  RetireDomain owner-signal-domain-criome::Retirement
+  SetPolicy owner-signal-domain-criome::Policy
+  SetProjection owner-signal-domain-criome::ProjectionDeclaration
+
+  WriteOutput [DomainRegistered DelegationSet DomainRetired PolicySet ProjectionSet RequestRejected]
+  DomainRegistered owner-signal-domain-criome::DomainRegistered
+  DelegationSet owner-signal-domain-criome::DelegationSet
+  DomainRetired owner-signal-domain-criome::DomainRetired
+  PolicySet owner-signal-domain-criome::PolicySet
+  ProjectionSet owner-signal-domain-criome::ProjectionSet
+  RequestRejected owner-signal-domain-criome::RequestRejected
+
+  RejectionReport { reason RejectionReason marker StateMarker }
+  RejectionReason [DomainUnknown NotAuthoritative DomainAlreadyRegistered ProjectionRejected]
+  StateMarker { CommitSequence * StateDigest * }
+  CommitSequence Integer
+  StateDigest Integer
+
+  RegistryTable { domains (Vec RegisteredDomain) delegations (Vec DelegationRecord) }
+  RegisteredDomain { domain signal-domain-criome::Domain authority AuthorityEndpoint marker StateMarker }
+  DelegationRecord { domain signal-domain-criome::Domain authority AuthorityEndpoint marker StateMarker }
+  ProjectionTable { projections (Vec ProjectionRecord) }
+  ProjectionRecord { domain signal-domain-criome::Domain projection signal-domain-criome::Projection marker StateMarker }
+  AuthorityEndpoint String
+}
+
+[(Version 0 1) (Status Concept)]

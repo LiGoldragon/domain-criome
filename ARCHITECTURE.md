@@ -106,18 +106,23 @@ resolution and projection work should be request-scoped and timeout-bounded.
 - No direct state access from the CLI.
 - No deprecated `signal-core` dependency in new code.
 
-## Pending schema-engine upgrade
+## Schema-engine upgrade track
 
-**Status:** scheduled for migration to schema-language-based contract per `reports/designer/326-v13-spirit-complete-schema-vision.md` + `reports/designer/324-migration-mvp-spirit-handover-re-specification.md`.
+The schema-derived target is split by plane, not authored as one shared
+component schema:
 
-**Target:** this component's hand-written `signal_channel!` invocation + Layer 2 Command/Effect + storage types convert to a single `domain-criome/domain-criome.schema` file. The brilliant macro library (`primary-ezqx.1`) reads the schema + emits all the wire types + ShortHeader projection + dispatcher + VersionProjection + storage descriptors.
+- `signal-domain-criome` owns the ordinary Signal schema for public resolution,
+  observation, projection, and validation messages.
+- `owner-signal-domain-criome` owns the owner-only Signal schema for registry,
+  delegation, policy, and projection-declaration mutations.
+- `domain-criome/schema/nexus.concept.schema` names the daemon-owned Nexus
+  decision plane and imports the two contract `Input`/`Output` roots plus SEMA
+  roots.
+- `domain-criome/schema/sema.concept.schema` names the daemon-owned SEMA state
+  plane for registry, delegation, projection policy, and projection state.
 
-**Sequence:** per `primary-kbmi.2`. Spirit is the MVP pilot landing first via `primary-ezqx.1`; schema cutover after cloud (cloud is the upstream coordination point per `primary-kbmi.1`). Domain-criome's projection-to-cloud path means cloud's schema needs to land first so domain-criome can resolve its projection record types against cloud's schema-published types.
-
-**Per-component concerns:** Per `primary-kbmi.2`; schema cutover after cloud. The ordinary signal-domain-criome contract is paired with `owner-signal-domain-criome`; both legs of the policy-vs-working split appear in the single `domain-criome.schema` file per the schema-language's separation discipline.
-
-**References:**
-- `reports/designer/326-v13-spirit-complete-schema-vision.md` — uniform header form + schema-language design
-- `reports/designer/324-migration-mvp-spirit-handover-re-specification.md` — migration MVP + handover state
-- `reports/designer/322-spirit-mvp-positional-schema-worked-example.md` — Spirit MVP worked example
-- `reports/operator/174-schema-import-header-design-critique-2026-05-24.md` — header/body/feature separation + lowering rules
+Signal contract repositories carry only the wire vocabulary that clients send
+and receive. Nexus decisions, SEMA state, daemon storage, and the projection
+runtime belong in this runtime crate. The projection-to-cloud path still waits
+for compatible cloud contract types before the generated domain-criome runtime
+can fully replace the hand-written prototype.
