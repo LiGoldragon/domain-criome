@@ -27,6 +27,12 @@ pub use meta_signal_domain_criome::schema::lib::PolicySet as PolicySet;
 pub use meta_signal_domain_criome::schema::lib::ProjectionSet as ProjectionSet;
 pub use meta_signal_domain_criome::schema::lib::RequestRejected as RequestRejected;
 
+#[cfg(feature = "nota-text")]
+pub use nota_next::{
+    NotaDecode, NotaDecodeError, NotaEncode, NotaSource,
+};
+
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum ReadInput {
     Observe(Observe),
@@ -43,6 +49,7 @@ pub type Project = ProjectionQuery;
 
 pub type Validate = Validation;
 
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum ReadOutput {
     Observed,
@@ -54,6 +61,7 @@ pub enum ReadOutput {
 
 pub type Missed = RejectionReport;
 
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum WriteInput {
     RegisterDomain(RegisterDomain),
@@ -73,6 +81,7 @@ pub type SetPolicy = Policy;
 
 pub type SetProjection = ProjectionDeclaration;
 
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum WriteOutput {
     DomainRegistered,
@@ -83,12 +92,14 @@ pub enum WriteOutput {
     RequestRejected,
 }
 
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct RejectionReport {
     pub reason: RejectionReason,
     pub marker: StateMarker,
 }
 
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum RejectionReason {
     DomainUnknown,
@@ -97,6 +108,7 @@ pub enum RejectionReason {
     ProjectionRejected,
 }
 
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct StateMarker {
     pub commit_sequence: CommitSequence,
@@ -107,12 +119,14 @@ pub type CommitSequence = Integer;
 
 pub type StateDigest = Integer;
 
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct RegistryTable {
     pub domains: Vec<RegisteredDomain>,
     pub delegations: Vec<DelegationRecord>,
 }
 
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct RegisteredDomain {
     pub domain: Domain,
@@ -120,6 +134,7 @@ pub struct RegisteredDomain {
     pub marker: StateMarker,
 }
 
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct DelegationRecord {
     pub domain: Domain,
@@ -127,9 +142,11 @@ pub struct DelegationRecord {
     pub marker: StateMarker,
 }
 
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct ProjectionTable(pub Vec<ProjectionRecord>);
 
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct ProjectionRecord {
     pub domain: Domain,
@@ -139,12 +156,14 @@ pub struct ProjectionRecord {
 
 pub type AuthorityEndpoint = String;
 
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum Input {
     ReadInput(ReadInput),
     WriteInput(WriteInput),
 }
 
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum Output {
     ReadOutput(ReadOutput),
@@ -261,7 +280,191 @@ impl From<WriteOutput> for Output {
     }
 }
 
+#[cfg(feature = "nota-text")]
+impl ReadInput {
+    pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
+        <Self as NotaDecode>::from_nota_block(block)
+    }
 
+    pub fn to_nota(&self) -> String {
+        <Self as NotaEncode>::to_nota(self)
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl ReadOutput {
+    pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
+        <Self as NotaDecode>::from_nota_block(block)
+    }
+
+    pub fn to_nota(&self) -> String {
+        <Self as NotaEncode>::to_nota(self)
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl WriteInput {
+    pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
+        <Self as NotaDecode>::from_nota_block(block)
+    }
+
+    pub fn to_nota(&self) -> String {
+        <Self as NotaEncode>::to_nota(self)
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl WriteOutput {
+    pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
+        <Self as NotaDecode>::from_nota_block(block)
+    }
+
+    pub fn to_nota(&self) -> String {
+        <Self as NotaEncode>::to_nota(self)
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl RejectionReport {
+    pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
+        <Self as NotaDecode>::from_nota_block(block)
+    }
+
+    pub fn to_nota(&self) -> String {
+        <Self as NotaEncode>::to_nota(self)
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl RejectionReason {
+    pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
+        <Self as NotaDecode>::from_nota_block(block)
+    }
+
+    pub fn to_nota(&self) -> String {
+        <Self as NotaEncode>::to_nota(self)
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl StateMarker {
+    pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
+        <Self as NotaDecode>::from_nota_block(block)
+    }
+
+    pub fn to_nota(&self) -> String {
+        <Self as NotaEncode>::to_nota(self)
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl RegistryTable {
+    pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
+        <Self as NotaDecode>::from_nota_block(block)
+    }
+
+    pub fn to_nota(&self) -> String {
+        <Self as NotaEncode>::to_nota(self)
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl RegisteredDomain {
+    pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
+        <Self as NotaDecode>::from_nota_block(block)
+    }
+
+    pub fn to_nota(&self) -> String {
+        <Self as NotaEncode>::to_nota(self)
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl DelegationRecord {
+    pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
+        <Self as NotaDecode>::from_nota_block(block)
+    }
+
+    pub fn to_nota(&self) -> String {
+        <Self as NotaEncode>::to_nota(self)
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl ProjectionTable {
+    pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
+        <Self as NotaDecode>::from_nota_block(block)
+    }
+
+    pub fn to_nota(&self) -> String {
+        <Self as NotaEncode>::to_nota(self)
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl ProjectionRecord {
+    pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
+        <Self as NotaDecode>::from_nota_block(block)
+    }
+
+    pub fn to_nota(&self) -> String {
+        <Self as NotaEncode>::to_nota(self)
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl Input {
+    pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
+        <Self as NotaDecode>::from_nota_block(block)
+    }
+
+    pub fn to_nota(&self) -> String {
+        <Self as NotaEncode>::to_nota(self)
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl std::str::FromStr for Input {
+    type Err = NotaDecodeError;
+
+    fn from_str(source: &str) -> Result<Self, Self::Err> {
+        NotaSource::new(source).parse::<Self>()
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl std::fmt::Display for Input {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(&<Self as NotaEncode>::to_nota(self))
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl Output {
+    pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
+        <Self as NotaDecode>::from_nota_block(block)
+    }
+
+    pub fn to_nota(&self) -> String {
+        <Self as NotaEncode>::to_nota(self)
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl std::str::FromStr for Output {
+    type Err = NotaDecodeError;
+
+    fn from_str(source: &str) -> Result<Self, Self::Err> {
+        NotaSource::new(source).parse::<Self>()
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl std::fmt::Display for Output {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(&<Self as NotaEncode>::to_nota(self))
+    }
+}
 
 pub mod short_header {
     pub const INPUT_READ_INPUT: u64 = 0x0000000000000000;
@@ -295,12 +498,14 @@ impl std::fmt::Display for SignalFrameError {
 
 impl std::error::Error for SignalFrameError {}
 
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InputRoute {
     ReadInput,
     WriteInput,
 }
 
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OutputRoute {
     ReadOutput,
@@ -407,8 +612,191 @@ impl Output {
     }
 }
 
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ReadInputRoute {
+    Observe,
+    Resolve,
+    Project,
+    Validate,
+}
+
+impl ReadInput {
+    pub fn route(&self) -> ReadInputRoute {
+        match self {
+            Self::Observe(_) => ReadInputRoute::Observe,
+            Self::Resolve(_) => ReadInputRoute::Resolve,
+            Self::Project(_) => ReadInputRoute::Project,
+            Self::Validate(_) => ReadInputRoute::Validate,
+        }
+    }
+}
+
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ReadOutputRoute {
+    Observed,
+    Resolved,
+    Projected,
+    Validated,
+    Missed,
+}
+
+impl ReadOutput {
+    pub fn route(&self) -> ReadOutputRoute {
+        match self {
+            Self::Observed => ReadOutputRoute::Observed,
+            Self::Resolved => ReadOutputRoute::Resolved,
+            Self::Projected => ReadOutputRoute::Projected,
+            Self::Validated => ReadOutputRoute::Validated,
+            Self::Missed(_) => ReadOutputRoute::Missed,
+        }
+    }
+}
+
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WriteInputRoute {
+    RegisterDomain,
+    Delegate,
+    RetireDomain,
+    SetPolicy,
+    SetProjection,
+}
+
+impl WriteInput {
+    pub fn route(&self) -> WriteInputRoute {
+        match self {
+            Self::RegisterDomain(_) => WriteInputRoute::RegisterDomain,
+            Self::Delegate(_) => WriteInputRoute::Delegate,
+            Self::RetireDomain(_) => WriteInputRoute::RetireDomain,
+            Self::SetPolicy(_) => WriteInputRoute::SetPolicy,
+            Self::SetProjection(_) => WriteInputRoute::SetProjection,
+        }
+    }
+}
+
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WriteOutputRoute {
+    DomainRegistered,
+    DelegationSet,
+    DomainRetired,
+    PolicySet,
+    ProjectionSet,
+    RequestRejected,
+}
+
+impl WriteOutput {
+    pub fn route(&self) -> WriteOutputRoute {
+        match self {
+            Self::DomainRegistered => WriteOutputRoute::DomainRegistered,
+            Self::DelegationSet => WriteOutputRoute::DelegationSet,
+            Self::DomainRetired => WriteOutputRoute::DomainRetired,
+            Self::PolicySet => WriteOutputRoute::PolicySet,
+            Self::ProjectionSet => WriteOutputRoute::ProjectionSet,
+            Self::RequestRejected => WriteOutputRoute::RequestRejected,
+        }
+    }
+}
+
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SemaObjectName {
+    WriteInput(WriteInputRoute),
+    ReadInput(ReadInputRoute),
+    WriteOutput(WriteOutputRoute),
+    ReadOutput(ReadOutputRoute),
+    Started,
+    Stopped,
+    WriteApplied,
+    ReadObserved,
+}
+
+impl SemaObjectName {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::WriteInput(route) => match route {
+                WriteInputRoute::RegisterDomain => "SemaWriteInputRegisterDomain",
+                WriteInputRoute::Delegate => "SemaWriteInputDelegate",
+                WriteInputRoute::RetireDomain => "SemaWriteInputRetireDomain",
+                WriteInputRoute::SetPolicy => "SemaWriteInputSetPolicy",
+                WriteInputRoute::SetProjection => "SemaWriteInputSetProjection",
+            },
+            Self::ReadInput(route) => match route {
+                ReadInputRoute::Observe => "SemaReadInputObserve",
+                ReadInputRoute::Resolve => "SemaReadInputResolve",
+                ReadInputRoute::Project => "SemaReadInputProject",
+                ReadInputRoute::Validate => "SemaReadInputValidate",
+            },
+            Self::WriteOutput(route) => match route {
+                WriteOutputRoute::DomainRegistered => "SemaWriteOutputDomainRegistered",
+                WriteOutputRoute::DelegationSet => "SemaWriteOutputDelegationSet",
+                WriteOutputRoute::DomainRetired => "SemaWriteOutputDomainRetired",
+                WriteOutputRoute::PolicySet => "SemaWriteOutputPolicySet",
+                WriteOutputRoute::ProjectionSet => "SemaWriteOutputProjectionSet",
+                WriteOutputRoute::RequestRejected => "SemaWriteOutputRequestRejected",
+            },
+            Self::ReadOutput(route) => match route {
+                ReadOutputRoute::Observed => "SemaReadOutputObserved",
+                ReadOutputRoute::Resolved => "SemaReadOutputResolved",
+                ReadOutputRoute::Projected => "SemaReadOutputProjected",
+                ReadOutputRoute::Validated => "SemaReadOutputValidated",
+                ReadOutputRoute::Missed => "SemaReadOutputMissed",
+            },
+            Self::Started => "SemaStarted",
+            Self::Stopped => "SemaStopped",
+            Self::WriteApplied => "SemaWriteApplied",
+            Self::ReadObserved => "SemaReadObserved",
+        }
+    }
+}
+
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ObjectName {
+    Sema(SemaObjectName),
+}
+
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TraceEvent(pub ObjectName);
+
+impl ObjectName {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Sema(object_name) => object_name.name(),
+        }
+    }
+}
+
+impl TraceEvent {
+    pub fn new(object_name: ObjectName) -> Self {
+        Self(object_name)
+    }
+
+    pub fn object_name(&self) -> ObjectName {
+        self.0
+    }
+
+    pub fn name(&self) -> &'static str {
+        self.0.name()
+    }
+}
+
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct OriginRoute(pub Integer);
+#[cfg(feature = "nota-text")]
+impl OriginRoute {
+    pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
+        <Self as NotaDecode>::from_nota_block(block)
+    }
+
+    pub fn to_nota(self) -> String {
+        <Self as NotaEncode>::to_nota(&self)
+    }
+}
 
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct Sema<Root> {
@@ -435,6 +823,105 @@ impl<Root> Sema<Root> {
 
     pub fn map_root<NextRoot>(self, map: impl FnOnce(Root) -> NextRoot) -> Sema<NextRoot> {
         Sema::new(self.origin_route, map(self.root))
+    }
+}
+
+#[allow(clippy::module_inception)]
+pub mod sema {
+    pub type WriteInput = super::WriteInput;
+    pub type WriteOutput = super::WriteOutput;
+    pub type ReadInput = super::ReadInput;
+    pub type ReadOutput = super::ReadOutput;
+    pub type Sema<Root> = super::Sema<Root>;
+}
+
+impl WriteInput {
+    pub fn with_origin_route(self, origin_route: OriginRoute) -> sema::Sema<Self> {
+        sema::Sema::new(origin_route, self)
+    }
+}
+
+impl WriteOutput {
+    pub fn with_origin_route(self, origin_route: OriginRoute) -> sema::Sema<Self> {
+        sema::Sema::new(origin_route, self)
+    }
+}
+
+impl ReadInput {
+    pub fn with_origin_route(self, origin_route: OriginRoute) -> sema::Sema<Self> {
+        sema::Sema::new(origin_route, self)
+    }
+}
+
+impl ReadOutput {
+    pub fn with_origin_route(self, origin_route: OriginRoute) -> sema::Sema<Self> {
+        sema::Sema::new(origin_route, self)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ActorStartFailure {
+    ResourceBusy(String),
+    ConfigurationInvalid(String),
+}
+
+impl std::fmt::Display for ActorStartFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ResourceBusy(message) => write!(formatter, "actor resource busy: {message}"),
+            Self::ConfigurationInvalid(message) => write!(formatter, "actor configuration invalid: {message}"),
+        }
+    }
+}
+
+impl std::error::Error for ActorStartFailure {}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ActorStopFailure {
+    ResourceLocked(String),
+    ChildStillRunning(String),
+}
+
+impl std::fmt::Display for ActorStopFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ResourceLocked(message) => write!(formatter, "actor resource locked: {message}"),
+            Self::ChildStillRunning(message) => write!(formatter, "actor child still running: {message}"),
+        }
+    }
+}
+
+impl std::error::Error for ActorStopFailure {}
+
+pub trait SemaEngine {
+    fn on_start(&mut self) -> Result<(), ActorStartFailure> {
+        Ok(())
+    }
+    fn on_stop(&mut self) -> Result<(), ActorStopFailure> {
+        Ok(())
+    }
+
+    fn trace_sema_activation(&self, _object_name: SemaObjectName) {}
+    fn trace_sema_write_applied(&self) {
+        self.trace_sema_activation(SemaObjectName::WriteApplied);
+    }
+    fn trace_sema_read_observed(&self) {
+        self.trace_sema_activation(SemaObjectName::ReadObserved);
+    }
+
+    fn apply_inner(&mut self, input: sema::Sema<sema::WriteInput>) -> sema::Sema<sema::WriteOutput>;
+    fn observe_inner(&self, input: sema::Sema<sema::ReadInput>) -> sema::Sema<sema::ReadOutput>;
+
+    fn apply(&mut self, input: sema::Sema<sema::WriteInput>) -> sema::Sema<sema::WriteOutput> {
+        let output = self.apply_inner(input);
+        self.trace_sema_write_applied();
+        output
+    }
+
+    fn observe(&self, input: sema::Sema<sema::ReadInput>) -> sema::Sema<sema::ReadOutput> {
+        let output = self.observe_inner(input);
+        self.trace_sema_read_observed();
+        output
     }
 }
 

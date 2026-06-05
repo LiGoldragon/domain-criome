@@ -130,5 +130,6 @@ driver for daemon runtime schemas: `schema/nexus.schema` targets
 `NexusRuntime`, and `schema/sema.schema` targets `SemaRuntime`. The build
 consumes the ordinary `signal-domain-criome` schema directory and the meta
 `meta-signal-domain-criome` schema directory from Cargo metadata, then
-freshness-checks `schema/*.asschema` and `src/schema/{nexus,sema}.rs`. The
-daemon must not hard-code local checkout paths for contract schemas.
+validates each authored schema as a `SchemaSource` object through text and
+rkyv round-trips and freshness-checks `src/schema/{nexus,sema}.rs`. The daemon
+must not hard-code local checkout paths for contract schemas.

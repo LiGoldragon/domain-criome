@@ -14,6 +14,11 @@ pub use domain_criome::schema::sema::ReadOutput as SemaReadOutput;
 pub use domain_criome::schema::sema::WriteInput as SemaWriteInput;
 pub use domain_criome::schema::sema::WriteOutput as SemaWriteOutput;
 
+#[cfg(feature = "nota-text")]
+pub use nota_next::{
+    NotaDecode, NotaDecodeError, NotaEncode, NotaSource,
+};
+
 pub type SignalArrived = SignalInput;
 
 pub type SemaReadCompleted = SemaReadOutput;
@@ -28,18 +33,21 @@ pub type ReplyToSignal = SignalOutput;
 
 pub type Continue = NexusInput;
 
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum SignalInput {
     OrdinaryInput,
     MetaInput,
 }
 
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum SignalOutput {
     OrdinaryOutput,
     MetaOutput,
 }
 
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum NexusInput {
     SignalArrived(SignalArrived),
@@ -47,6 +55,7 @@ pub enum NexusInput {
     SemaWriteCompleted(SemaWriteCompleted),
 }
 
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum NexusOutput {
     CommandSemaRead(CommandSemaRead),
@@ -55,6 +64,7 @@ pub enum NexusOutput {
     Continue(Continue),
 }
 
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum Input {
     SignalArrived(SignalArrived),
@@ -62,6 +72,7 @@ pub enum Input {
     SemaWriteCompleted(SemaWriteCompleted),
 }
 
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum Output {
     CommandSemaRead(CommandSemaRead),
@@ -134,7 +145,103 @@ impl Output {
     }
 }
 
+#[cfg(feature = "nota-text")]
+impl SignalInput {
+    pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
+        <Self as NotaDecode>::from_nota_block(block)
+    }
 
+    pub fn to_nota(&self) -> String {
+        <Self as NotaEncode>::to_nota(self)
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl SignalOutput {
+    pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
+        <Self as NotaDecode>::from_nota_block(block)
+    }
+
+    pub fn to_nota(&self) -> String {
+        <Self as NotaEncode>::to_nota(self)
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl NexusInput {
+    pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
+        <Self as NotaDecode>::from_nota_block(block)
+    }
+
+    pub fn to_nota(&self) -> String {
+        <Self as NotaEncode>::to_nota(self)
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl NexusOutput {
+    pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
+        <Self as NotaDecode>::from_nota_block(block)
+    }
+
+    pub fn to_nota(&self) -> String {
+        <Self as NotaEncode>::to_nota(self)
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl Input {
+    pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
+        <Self as NotaDecode>::from_nota_block(block)
+    }
+
+    pub fn to_nota(&self) -> String {
+        <Self as NotaEncode>::to_nota(self)
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl std::str::FromStr for Input {
+    type Err = NotaDecodeError;
+
+    fn from_str(source: &str) -> Result<Self, Self::Err> {
+        NotaSource::new(source).parse::<Self>()
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl std::fmt::Display for Input {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(&<Self as NotaEncode>::to_nota(self))
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl Output {
+    pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
+        <Self as NotaDecode>::from_nota_block(block)
+    }
+
+    pub fn to_nota(&self) -> String {
+        <Self as NotaEncode>::to_nota(self)
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl std::str::FromStr for Output {
+    type Err = NotaDecodeError;
+
+    fn from_str(source: &str) -> Result<Self, Self::Err> {
+        NotaSource::new(source).parse::<Self>()
+    }
+}
+
+#[cfg(feature = "nota-text")]
+impl std::fmt::Display for Output {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(&<Self as NotaEncode>::to_nota(self))
+    }
+}
 
 pub mod short_header {
     pub const INPUT_SIGNAL_ARRIVED: u64 = 0x0000000000000000;
@@ -171,6 +278,7 @@ impl std::fmt::Display for SignalFrameError {
 
 impl std::error::Error for SignalFrameError {}
 
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InputRoute {
     SignalArrived,
@@ -178,6 +286,7 @@ pub enum InputRoute {
     SemaWriteCompleted,
 }
 
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OutputRoute {
     CommandSemaRead,
@@ -295,8 +404,19 @@ impl Output {
     }
 }
 
+#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct OriginRoute(pub Integer);
+#[cfg(feature = "nota-text")]
+impl OriginRoute {
+    pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
+        <Self as NotaDecode>::from_nota_block(block)
+    }
+
+    pub fn to_nota(self) -> String {
+        <Self as NotaEncode>::to_nota(&self)
+    }
+}
 
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct Nexus<Root> {
