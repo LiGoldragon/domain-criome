@@ -3,7 +3,7 @@
 //! The daemon owns provider-neutral domain meaning. Provider execution stays in
 //! the `cloud` component.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use meta_signal_domain_criome::{
@@ -25,7 +25,10 @@ use signal_frame::{NonEmpty, Reply as FrameReply, SubReply};
 
 pub mod client;
 pub mod daemon;
+pub mod daemon_command;
 pub mod frame_io;
+
+pub use daemon_command::{DomainCriomeDaemonCommand, DomainCriomeDaemonConfigurationFile};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -41,8 +44,26 @@ pub enum Error {
     #[error("NOTA decode error: {0}")]
     Nota(#[from] nota_codec::Error),
 
-    #[error("configuration decode error: {0}")]
-    Configuration(#[from] nota_config::Error),
+    #[error("configuration archive decode failed")]
+    ConfigurationArchiveDecode,
+
+    #[error("configuration archive encode failed")]
+    ConfigurationArchiveEncode,
+
+    #[error("configuration read failed at {path}: {source}")]
+    ConfigurationRead {
+        path: PathBuf,
+        source: std::io::Error,
+    },
+
+    #[error("configuration write failed at {path}: {source}")]
+    ConfigurationWrite {
+        path: PathBuf,
+        source: std::io::Error,
+    },
+
+    #[error("argument: {0}")]
+    Argument(#[from] triad_runtime::ArgumentError),
 
     #[error("expected exactly one argument")]
     ExpectedSingleArgument,
@@ -88,7 +109,18 @@ pub struct DaemonConfiguration {
     pub owner_socket_mode: u32,
 }
 
-nota_config::impl_rkyv_configuration!(DaemonConfiguration);
+impl DaemonConfiguration {
+    pub fn from_rkyv_bytes(bytes: &[u8]) -> Result<Self> {
+        rkyv::from_bytes::<Self, rkyv::rancor::Error>(bytes)
+            .map_err(|_| Error::ConfigurationArchiveDecode)
+    }
+
+    pub fn to_rkyv_bytes(&self) -> Result<Vec<u8>> {
+        let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(self)
+            .map_err(|_| Error::ConfigurationArchiveEncode)?;
+        Ok(bytes.into_vec())
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProjectionState {

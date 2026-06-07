@@ -67,13 +67,13 @@ version = "0.1.0"
 dependencies = [
  "meta-signal-domain-criome",
  "nota-codec",
- "nota-config",
  "rkyv",
  "schema-rust-next",
  "signal-domain-criome",
  "signal-frame",
  "tempfile",
  "thiserror",
+ "triad-runtime",
 ]
 
 [[package]]
@@ -267,16 +267,6 @@ source = "git+https://github.com/LiGoldragon/nota-codec.git?branch=main#f761421c
 dependencies = [
  "camino",
  "nota-derive",
- "thiserror",
-]
-
-[[package]]
-name = "nota-config"
-version = "0.1.0"
-source = "git+https://github.com/LiGoldragon/nota-config.git?branch=main#77a9f2e404d3f9bf00da456372e0ec360aa5d029"
-dependencies = [
- "nota-codec",
- "rkyv",
  "thiserror",
 ]
 
@@ -648,6 +638,16 @@ name = "tinyvec_macros"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
+
+[[package]]
+name = "triad-runtime"
+version = "0.2.1"
+source = "git+https://github.com/LiGoldragon/triad-runtime.git?branch=main#cdda1b1f95283f36d488fa2435281e6201fe7fdb"
+dependencies = [
+ "rustix",
+ "signal-frame",
+ "thiserror",
+]
 
 [[package]]
 name = "unicode-ident"

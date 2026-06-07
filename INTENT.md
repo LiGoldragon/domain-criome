@@ -24,6 +24,10 @@ Spirit records; not embellished.*
   checkout paths to compensate for missing metadata.
 - Provider-specific vocabulary, provider credentials, and provider API calls do
   not belong in `domain-criome`; provider execution belongs to `cloud`.
+- `domain-criome-daemon` starts from one signal-encoded rkyv
+  `DaemonConfiguration` file. Inline NOTA and `.nota` configuration
+  files are CLI/authoring surfaces and are rejected by the daemon
+  entrypoint.
 
 ## Principles
 

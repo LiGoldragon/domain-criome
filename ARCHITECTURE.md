@@ -105,6 +105,10 @@ resolution and projection work should be request-scoped and timeout-bounded.
 - No direct provider API calls.
 - No direct state access from the CLI.
 - No deprecated `signal-core` dependency in new code.
+- `domain-criome-daemon` starts from one signal-encoded rkyv
+  `DaemonConfiguration` file. Inline NOTA and `.nota` files are
+  rejected by the daemon entrypoint; NOTA remains at the CLI/authoring
+  edge.
 
 ## Schema-engine upgrade track
 
