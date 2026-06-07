@@ -28,17 +28,15 @@ pub use meta_signal_domain_criome::schema::lib::ProjectionSet as ProjectionSet;
 pub use meta_signal_domain_criome::schema::lib::RequestRejected as RequestRejected;
 
 #[cfg(feature = "nota-text")]
-pub use nota_next::{
-    NotaDecode, NotaDecodeError, NotaEncode, NotaSource,
-};
+pub use nota_next::{NotaDecode, NotaDecodeError, NotaEncode, NotaSource};
 
 #[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum ReadInput {
-    Observe(Observe),
-    Resolve(Resolve),
-    Project(Project),
-    Validate(Validate),
+    Observe,
+    Resolve,
+    Project,
+    Validate,
 }
 
 pub type Observe = Observation;
@@ -56,7 +54,7 @@ pub enum ReadOutput {
     Resolved,
     Projected,
     Validated,
-    Missed(Missed),
+    Missed,
 }
 
 pub type Missed = RejectionReport;
@@ -64,11 +62,11 @@ pub type Missed = RejectionReport;
 #[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum WriteInput {
-    RegisterDomain(RegisterDomain),
-    Delegate(Delegate),
-    RetireDomain(RetireDomain),
-    SetPolicy(SetPolicy),
-    SetProjection(SetProjection),
+    RegisterDomain,
+    Delegate,
+    RetireDomain,
+    SetPolicy,
+    SetProjection,
 }
 
 pub type RegisterDomain = Registration;
@@ -174,65 +172,16 @@ impl ProjectionTable {
     pub fn new(payload: Vec<ProjectionRecord>) -> Self {
         Self(payload)
     }
-
     pub fn payload(&self) -> &Vec<ProjectionRecord> {
         &self.0
     }
-
     pub fn into_payload(self) -> Vec<ProjectionRecord> {
         self.0
     }
 }
-
 impl From<Vec<ProjectionRecord>> for ProjectionTable {
     fn from(payload: Vec<ProjectionRecord>) -> Self {
         Self::new(payload)
-    }
-}
-
-impl ReadInput {
-    pub fn observe(payload: Observe) -> Self {
-        Self::Observe(payload)
-    }
-
-    pub fn resolve(payload: Resolve) -> Self {
-        Self::Resolve(payload)
-    }
-
-    pub fn project(payload: Project) -> Self {
-        Self::Project(payload)
-    }
-
-    pub fn validate(payload: Validate) -> Self {
-        Self::Validate(payload)
-    }
-}
-
-impl ReadOutput {
-    pub fn missed(payload: Missed) -> Self {
-        Self::Missed(payload)
-    }
-}
-
-impl WriteInput {
-    pub fn register_domain(payload: RegisterDomain) -> Self {
-        Self::RegisterDomain(payload)
-    }
-
-    pub fn delegate(payload: Delegate) -> Self {
-        Self::Delegate(payload)
-    }
-
-    pub fn retire_domain(payload: RetireDomain) -> Self {
-        Self::RetireDomain(payload)
-    }
-
-    pub fn set_policy(payload: SetPolicy) -> Self {
-        Self::SetPolicy(payload)
-    }
-
-    pub fn set_projection(payload: SetProjection) -> Self {
-        Self::SetProjection(payload)
     }
 }
 
@@ -240,7 +189,6 @@ impl Input {
     pub fn read_input(payload: ReadInput) -> Self {
         Self::ReadInput(payload)
     }
-
     pub fn write_input(payload: WriteInput) -> Self {
         Self::WriteInput(payload)
     }
@@ -250,7 +198,6 @@ impl Output {
     pub fn read_output(payload: ReadOutput) -> Self {
         Self::ReadOutput(payload)
     }
-
     pub fn write_output(payload: WriteOutput) -> Self {
         Self::WriteOutput(payload)
     }
@@ -285,7 +232,6 @@ impl ReadInput {
     pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
         <Self as NotaDecode>::from_nota_block(block)
     }
-
     pub fn to_nota(&self) -> String {
         <Self as NotaEncode>::to_nota(self)
     }
@@ -296,7 +242,6 @@ impl ReadOutput {
     pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
         <Self as NotaDecode>::from_nota_block(block)
     }
-
     pub fn to_nota(&self) -> String {
         <Self as NotaEncode>::to_nota(self)
     }
@@ -307,7 +252,6 @@ impl WriteInput {
     pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
         <Self as NotaDecode>::from_nota_block(block)
     }
-
     pub fn to_nota(&self) -> String {
         <Self as NotaEncode>::to_nota(self)
     }
@@ -318,7 +262,6 @@ impl WriteOutput {
     pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
         <Self as NotaDecode>::from_nota_block(block)
     }
-
     pub fn to_nota(&self) -> String {
         <Self as NotaEncode>::to_nota(self)
     }
@@ -329,7 +272,6 @@ impl RejectionReport {
     pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
         <Self as NotaDecode>::from_nota_block(block)
     }
-
     pub fn to_nota(&self) -> String {
         <Self as NotaEncode>::to_nota(self)
     }
@@ -340,7 +282,6 @@ impl RejectionReason {
     pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
         <Self as NotaDecode>::from_nota_block(block)
     }
-
     pub fn to_nota(&self) -> String {
         <Self as NotaEncode>::to_nota(self)
     }
@@ -351,7 +292,6 @@ impl StateMarker {
     pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
         <Self as NotaDecode>::from_nota_block(block)
     }
-
     pub fn to_nota(&self) -> String {
         <Self as NotaEncode>::to_nota(self)
     }
@@ -362,7 +302,6 @@ impl RegistryTable {
     pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
         <Self as NotaDecode>::from_nota_block(block)
     }
-
     pub fn to_nota(&self) -> String {
         <Self as NotaEncode>::to_nota(self)
     }
@@ -373,7 +312,6 @@ impl RegisteredDomain {
     pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
         <Self as NotaDecode>::from_nota_block(block)
     }
-
     pub fn to_nota(&self) -> String {
         <Self as NotaEncode>::to_nota(self)
     }
@@ -384,7 +322,6 @@ impl DelegationRecord {
     pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
         <Self as NotaDecode>::from_nota_block(block)
     }
-
     pub fn to_nota(&self) -> String {
         <Self as NotaEncode>::to_nota(self)
     }
@@ -395,7 +332,6 @@ impl ProjectionTable {
     pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
         <Self as NotaDecode>::from_nota_block(block)
     }
-
     pub fn to_nota(&self) -> String {
         <Self as NotaEncode>::to_nota(self)
     }
@@ -406,7 +342,6 @@ impl ProjectionRecord {
     pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
         <Self as NotaDecode>::from_nota_block(block)
     }
-
     pub fn to_nota(&self) -> String {
         <Self as NotaEncode>::to_nota(self)
     }
@@ -417,7 +352,6 @@ impl Input {
     pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
         <Self as NotaDecode>::from_nota_block(block)
     }
-
     pub fn to_nota(&self) -> String {
         <Self as NotaEncode>::to_nota(self)
     }
@@ -426,12 +360,10 @@ impl Input {
 #[cfg(feature = "nota-text")]
 impl std::str::FromStr for Input {
     type Err = NotaDecodeError;
-
     fn from_str(source: &str) -> Result<Self, Self::Err> {
         NotaSource::new(source).parse::<Self>()
     }
 }
-
 #[cfg(feature = "nota-text")]
 impl std::fmt::Display for Input {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -444,7 +376,6 @@ impl Output {
     pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
         <Self as NotaDecode>::from_nota_block(block)
     }
-
     pub fn to_nota(&self) -> String {
         <Self as NotaEncode>::to_nota(self)
     }
@@ -453,12 +384,10 @@ impl Output {
 #[cfg(feature = "nota-text")]
 impl std::str::FromStr for Output {
     type Err = NotaDecodeError;
-
     fn from_str(source: &str) -> Result<Self, Self::Err> {
         NotaSource::new(source).parse::<Self>()
     }
 }
-
 #[cfg(feature = "nota-text")]
 impl std::fmt::Display for Output {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -466,154 +395,17 @@ impl std::fmt::Display for Output {
     }
 }
 
-pub mod short_header {
-    pub const INPUT_READ_INPUT: u64 = 0x0000000000000000;
-    pub const INPUT_WRITE_INPUT: u64 = 0x0001000000000000;
-    pub const OUTPUT_READ_OUTPUT: u64 = 0x0100000000000000;
-    pub const OUTPUT_WRITE_OUTPUT: u64 = 0x0101000000000000;
-}
-
-const SIGNAL_SHORT_HEADER_BYTE_COUNT: usize = 8;
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum SignalFrameError {
-    ArchiveEncode,
-    ArchiveDecode,
-    FrameTooShort { found: usize },
-    UnknownHeader { root_enum: &'static str, header: u64 },
-    HeaderMismatch { expected: u64, found: u64 },
-}
-
-impl std::fmt::Display for SignalFrameError {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::ArchiveEncode => formatter.write_str("failed to encode rkyv archive"),
-            Self::ArchiveDecode => formatter.write_str("failed to decode rkyv archive"),
-            Self::FrameTooShort { found } => write!(formatter, "signal frame too short: {found} bytes"),
-            Self::UnknownHeader { root_enum, header } => write!(formatter, "unknown {root_enum} short header 0x{header:016X}"),
-            Self::HeaderMismatch { expected, found } => write!(formatter, "decoded payload header mismatch: expected 0x{expected:016X}, found 0x{found:016X}"),
-        }
-    }
-}
-
-impl std::error::Error for SignalFrameError {}
-
 #[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
-#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
-pub enum InputRoute {
-    ReadInput,
-    WriteInput,
-}
-
-#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
-#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
-pub enum OutputRoute {
-    ReadOutput,
-    WriteOutput,
-}
-
-impl Input {
-    pub fn route(&self) -> InputRoute {
-        match self {
-            Self::ReadInput(_) => InputRoute::ReadInput,
-            Self::WriteInput(_) => InputRoute::WriteInput,
-        }
-    }
-
-    pub fn short_header(&self) -> u64 {
-        match self {
-            Self::ReadInput(_) => short_header::INPUT_READ_INPUT,
-            Self::WriteInput(_) => short_header::INPUT_WRITE_INPUT,
-        }
-    }
-
-    pub fn route_from_short_header(header: u64) -> Result<InputRoute, SignalFrameError> {
-        match header {
-            short_header::INPUT_READ_INPUT => Ok(InputRoute::ReadInput),
-            short_header::INPUT_WRITE_INPUT => Ok(InputRoute::WriteInput),
-            _ => Err(SignalFrameError::UnknownHeader { root_enum: "Input", header }),
-        }
-    }
-
-    pub fn encode_signal_frame(&self) -> Result<Vec<u8>, SignalFrameError> {
-        let archive = rkyv::to_bytes::<rkyv::rancor::Error>(self)
-            .map_err(|_| SignalFrameError::ArchiveEncode)?;
-        let mut frame = Vec::with_capacity(SIGNAL_SHORT_HEADER_BYTE_COUNT + archive.len());
-        frame.extend_from_slice(&self.short_header().to_le_bytes());
-        frame.extend_from_slice(&archive);
-        Ok(frame)
-    }
-
-    pub fn decode_signal_frame(frame: &[u8]) -> Result<(InputRoute, Self), SignalFrameError> {
-        if frame.len() < SIGNAL_SHORT_HEADER_BYTE_COUNT {
-            return Err(SignalFrameError::FrameTooShort { found: frame.len() });
-        }
-        let mut header_bytes = [0_u8; SIGNAL_SHORT_HEADER_BYTE_COUNT];
-        header_bytes.copy_from_slice(&frame[..SIGNAL_SHORT_HEADER_BYTE_COUNT]);
-        let header = u64::from_le_bytes(header_bytes);
-        let route = Self::route_from_short_header(header)?;
-        let value = rkyv::from_bytes::<Self, rkyv::rancor::Error>(&frame[SIGNAL_SHORT_HEADER_BYTE_COUNT..])
-            .map_err(|_| SignalFrameError::ArchiveDecode)?;
-        let expected = value.short_header();
-        if expected != header {
-            return Err(SignalFrameError::HeaderMismatch { expected, found: header });
-        }
-        Ok((route, value))
-    }
-}
-
-impl Output {
-    pub fn route(&self) -> OutputRoute {
-        match self {
-            Self::ReadOutput(_) => OutputRoute::ReadOutput,
-            Self::WriteOutput(_) => OutputRoute::WriteOutput,
-        }
-    }
-
-    pub fn short_header(&self) -> u64 {
-        match self {
-            Self::ReadOutput(_) => short_header::OUTPUT_READ_OUTPUT,
-            Self::WriteOutput(_) => short_header::OUTPUT_WRITE_OUTPUT,
-        }
-    }
-
-    pub fn route_from_short_header(header: u64) -> Result<OutputRoute, SignalFrameError> {
-        match header {
-            short_header::OUTPUT_READ_OUTPUT => Ok(OutputRoute::ReadOutput),
-            short_header::OUTPUT_WRITE_OUTPUT => Ok(OutputRoute::WriteOutput),
-            _ => Err(SignalFrameError::UnknownHeader { root_enum: "Output", header }),
-        }
-    }
-
-    pub fn encode_signal_frame(&self) -> Result<Vec<u8>, SignalFrameError> {
-        let archive = rkyv::to_bytes::<rkyv::rancor::Error>(self)
-            .map_err(|_| SignalFrameError::ArchiveEncode)?;
-        let mut frame = Vec::with_capacity(SIGNAL_SHORT_HEADER_BYTE_COUNT + archive.len());
-        frame.extend_from_slice(&self.short_header().to_le_bytes());
-        frame.extend_from_slice(&archive);
-        Ok(frame)
-    }
-
-    pub fn decode_signal_frame(frame: &[u8]) -> Result<(OutputRoute, Self), SignalFrameError> {
-        if frame.len() < SIGNAL_SHORT_HEADER_BYTE_COUNT {
-            return Err(SignalFrameError::FrameTooShort { found: frame.len() });
-        }
-        let mut header_bytes = [0_u8; SIGNAL_SHORT_HEADER_BYTE_COUNT];
-        header_bytes.copy_from_slice(&frame[..SIGNAL_SHORT_HEADER_BYTE_COUNT]);
-        let header = u64::from_le_bytes(header_bytes);
-        let route = Self::route_from_short_header(header)?;
-        let value = rkyv::from_bytes::<Self, rkyv::rancor::Error>(&frame[SIGNAL_SHORT_HEADER_BYTE_COUNT..])
-            .map_err(|_| SignalFrameError::ArchiveDecode)?;
-        let expected = value.short_header();
-        if expected != header {
-            return Err(SignalFrameError::HeaderMismatch { expected, found: header });
-        }
-        Ok((route, value))
-    }
-}
-
-#[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
-#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(
+    rkyv::Archive,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+)]
 pub enum ReadInputRoute {
     Observe,
     Resolve,
@@ -624,16 +416,25 @@ pub enum ReadInputRoute {
 impl ReadInput {
     pub fn route(&self) -> ReadInputRoute {
         match self {
-            Self::Observe(_) => ReadInputRoute::Observe,
-            Self::Resolve(_) => ReadInputRoute::Resolve,
-            Self::Project(_) => ReadInputRoute::Project,
-            Self::Validate(_) => ReadInputRoute::Validate,
+            Self::Observe => ReadInputRoute::Observe,
+            Self::Resolve => ReadInputRoute::Resolve,
+            Self::Project => ReadInputRoute::Project,
+            Self::Validate => ReadInputRoute::Validate,
         }
     }
 }
 
 #[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
-#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(
+    rkyv::Archive,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+)]
 pub enum ReadOutputRoute {
     Observed,
     Resolved,
@@ -649,13 +450,22 @@ impl ReadOutput {
             Self::Resolved => ReadOutputRoute::Resolved,
             Self::Projected => ReadOutputRoute::Projected,
             Self::Validated => ReadOutputRoute::Validated,
-            Self::Missed(_) => ReadOutputRoute::Missed,
+            Self::Missed => ReadOutputRoute::Missed,
         }
     }
 }
 
 #[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
-#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(
+    rkyv::Archive,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+)]
 pub enum WriteInputRoute {
     RegisterDomain,
     Delegate,
@@ -667,17 +477,26 @@ pub enum WriteInputRoute {
 impl WriteInput {
     pub fn route(&self) -> WriteInputRoute {
         match self {
-            Self::RegisterDomain(_) => WriteInputRoute::RegisterDomain,
-            Self::Delegate(_) => WriteInputRoute::Delegate,
-            Self::RetireDomain(_) => WriteInputRoute::RetireDomain,
-            Self::SetPolicy(_) => WriteInputRoute::SetPolicy,
-            Self::SetProjection(_) => WriteInputRoute::SetProjection,
+            Self::RegisterDomain => WriteInputRoute::RegisterDomain,
+            Self::Delegate => WriteInputRoute::Delegate,
+            Self::RetireDomain => WriteInputRoute::RetireDomain,
+            Self::SetPolicy => WriteInputRoute::SetPolicy,
+            Self::SetProjection => WriteInputRoute::SetProjection,
         }
     }
 }
 
 #[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
-#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(
+    rkyv::Archive,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+)]
 pub enum WriteOutputRoute {
     DomainRegistered,
     DelegationSet,
@@ -701,7 +520,16 @@ impl WriteOutput {
 }
 
 #[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
-#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(
+    rkyv::Archive,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+)]
 pub enum SemaObjectName {
     WriteInput(WriteInputRoute),
     ReadInput(ReadInputRoute),
@@ -712,38 +540,47 @@ pub enum SemaObjectName {
     WriteApplied,
     ReadObserved,
 }
-
 impl SemaObjectName {
     pub fn name(self) -> &'static str {
         match self {
-            Self::WriteInput(route) => match route {
-                WriteInputRoute::RegisterDomain => "SemaWriteInputRegisterDomain",
-                WriteInputRoute::Delegate => "SemaWriteInputDelegate",
-                WriteInputRoute::RetireDomain => "SemaWriteInputRetireDomain",
-                WriteInputRoute::SetPolicy => "SemaWriteInputSetPolicy",
-                WriteInputRoute::SetProjection => "SemaWriteInputSetProjection",
-            },
-            Self::ReadInput(route) => match route {
-                ReadInputRoute::Observe => "SemaReadInputObserve",
-                ReadInputRoute::Resolve => "SemaReadInputResolve",
-                ReadInputRoute::Project => "SemaReadInputProject",
-                ReadInputRoute::Validate => "SemaReadInputValidate",
-            },
-            Self::WriteOutput(route) => match route {
-                WriteOutputRoute::DomainRegistered => "SemaWriteOutputDomainRegistered",
-                WriteOutputRoute::DelegationSet => "SemaWriteOutputDelegationSet",
-                WriteOutputRoute::DomainRetired => "SemaWriteOutputDomainRetired",
-                WriteOutputRoute::PolicySet => "SemaWriteOutputPolicySet",
-                WriteOutputRoute::ProjectionSet => "SemaWriteOutputProjectionSet",
-                WriteOutputRoute::RequestRejected => "SemaWriteOutputRequestRejected",
-            },
-            Self::ReadOutput(route) => match route {
-                ReadOutputRoute::Observed => "SemaReadOutputObserved",
-                ReadOutputRoute::Resolved => "SemaReadOutputResolved",
-                ReadOutputRoute::Projected => "SemaReadOutputProjected",
-                ReadOutputRoute::Validated => "SemaReadOutputValidated",
-                ReadOutputRoute::Missed => "SemaReadOutputMissed",
-            },
+            Self::WriteInput(route) => {
+                match route {
+                    WriteInputRoute::RegisterDomain => "SemaWriteInputRegisterDomain",
+                    WriteInputRoute::Delegate => "SemaWriteInputDelegate",
+                    WriteInputRoute::RetireDomain => "SemaWriteInputRetireDomain",
+                    WriteInputRoute::SetPolicy => "SemaWriteInputSetPolicy",
+                    WriteInputRoute::SetProjection => "SemaWriteInputSetProjection",
+                }
+            }
+            Self::ReadInput(route) => {
+                match route {
+                    ReadInputRoute::Observe => "SemaReadInputObserve",
+                    ReadInputRoute::Resolve => "SemaReadInputResolve",
+                    ReadInputRoute::Project => "SemaReadInputProject",
+                    ReadInputRoute::Validate => "SemaReadInputValidate",
+                }
+            }
+            Self::WriteOutput(route) => {
+                match route {
+                    WriteOutputRoute::DomainRegistered => {
+                        "SemaWriteOutputDomainRegistered"
+                    }
+                    WriteOutputRoute::DelegationSet => "SemaWriteOutputDelegationSet",
+                    WriteOutputRoute::DomainRetired => "SemaWriteOutputDomainRetired",
+                    WriteOutputRoute::PolicySet => "SemaWriteOutputPolicySet",
+                    WriteOutputRoute::ProjectionSet => "SemaWriteOutputProjectionSet",
+                    WriteOutputRoute::RequestRejected => "SemaWriteOutputRequestRejected",
+                }
+            }
+            Self::ReadOutput(route) => {
+                match route {
+                    ReadOutputRoute::Observed => "SemaReadOutputObserved",
+                    ReadOutputRoute::Resolved => "SemaReadOutputResolved",
+                    ReadOutputRoute::Projected => "SemaReadOutputProjected",
+                    ReadOutputRoute::Validated => "SemaReadOutputValidated",
+                    ReadOutputRoute::Missed => "SemaReadOutputMissed",
+                }
+            }
             Self::Started => "SemaStarted",
             Self::Stopped => "SemaStopped",
             Self::WriteApplied => "SemaWriteApplied",
@@ -753,15 +590,31 @@ impl SemaObjectName {
 }
 
 #[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
-#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(
+    rkyv::Archive,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+)]
 pub enum ObjectName {
     Sema(SemaObjectName),
 }
-
 #[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
-#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(
+    rkyv::Archive,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+)]
 pub struct TraceEvent(pub ObjectName);
-
 impl ObjectName {
     pub fn name(self) -> &'static str {
         match self {
@@ -769,30 +622,35 @@ impl ObjectName {
         }
     }
 }
-
 impl TraceEvent {
     pub fn new(object_name: ObjectName) -> Self {
         Self(object_name)
     }
-
     pub fn object_name(&self) -> ObjectName {
         self.0
     }
-
     pub fn name(&self) -> &'static str {
         self.0.name()
     }
 }
 
 #[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
-#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(
+    rkyv::Archive,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+)]
 pub struct OriginRoute(pub Integer);
 #[cfg(feature = "nota-text")]
 impl OriginRoute {
     pub fn from_nota_block(block: &nota_next::Block) -> Result<Self, NotaDecodeError> {
         <Self as NotaDecode>::from_nota_block(block)
     }
-
     pub fn to_nota(self) -> String {
         <Self as NotaEncode>::to_nota(&self)
     }
@@ -803,25 +661,23 @@ pub struct Sema<Root> {
     pub origin_route: OriginRoute,
     pub root: Root,
 }
-
 impl<Root> Sema<Root> {
     pub fn new(origin_route: OriginRoute, root: Root) -> Self {
         Self { origin_route, root }
     }
-
     pub fn origin_route(&self) -> OriginRoute {
         self.origin_route
     }
-
     pub fn root(&self) -> &Root {
         &self.root
     }
-
     pub fn into_root(self) -> Root {
         self.root
     }
-
-    pub fn map_root<NextRoot>(self, map: impl FnOnce(Root) -> NextRoot) -> Sema<NextRoot> {
+    pub fn map_root<NextRoot>(
+        self,
+        map: impl FnOnce(Root) -> NextRoot,
+    ) -> Sema<NextRoot> {
         Sema::new(self.origin_route, map(self.root))
     }
 }
@@ -859,38 +715,49 @@ impl ReadOutput {
     }
 }
 
+impl triad_runtime::SemaWriteInput for WriteInput {}
+
+impl triad_runtime::SemaWriteOutput for WriteOutput {}
+
+impl triad_runtime::SemaReadInput for ReadInput {}
+
+impl triad_runtime::SemaReadOutput for ReadOutput {}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ActorStartFailure {
     ResourceBusy(String),
     ConfigurationInvalid(String),
 }
-
 impl std::fmt::Display for ActorStartFailure {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::ResourceBusy(message) => write!(formatter, "actor resource busy: {message}"),
-            Self::ConfigurationInvalid(message) => write!(formatter, "actor configuration invalid: {message}"),
+            Self::ResourceBusy(message) => {
+                write!(formatter, "actor resource busy: {message}")
+            }
+            Self::ConfigurationInvalid(message) => {
+                write!(formatter, "actor configuration invalid: {message}")
+            }
         }
     }
 }
-
 impl std::error::Error for ActorStartFailure {}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ActorStopFailure {
     ResourceLocked(String),
     ChildStillRunning(String),
 }
-
 impl std::fmt::Display for ActorStopFailure {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::ResourceLocked(message) => write!(formatter, "actor resource locked: {message}"),
-            Self::ChildStillRunning(message) => write!(formatter, "actor child still running: {message}"),
+            Self::ResourceLocked(message) => {
+                write!(formatter, "actor resource locked: {message}")
+            }
+            Self::ChildStillRunning(message) => {
+                write!(formatter, "actor child still running: {message}")
+            }
         }
     }
 }
-
 impl std::error::Error for ActorStopFailure {}
 
 pub trait SemaEngine {
@@ -900,7 +767,6 @@ pub trait SemaEngine {
     fn on_stop(&mut self) -> Result<(), ActorStopFailure> {
         Ok(())
     }
-
     fn trace_sema_activation(&self, _object_name: SemaObjectName) {}
     fn trace_sema_write_applied(&self) {
         self.trace_sema_activation(SemaObjectName::WriteApplied);
@@ -908,17 +774,26 @@ pub trait SemaEngine {
     fn trace_sema_read_observed(&self) {
         self.trace_sema_activation(SemaObjectName::ReadObserved);
     }
-
-    fn apply_inner(&mut self, input: sema::Sema<sema::WriteInput>) -> sema::Sema<sema::WriteOutput>;
-    fn observe_inner(&self, input: sema::Sema<sema::ReadInput>) -> sema::Sema<sema::ReadOutput>;
-
-    fn apply(&mut self, input: sema::Sema<sema::WriteInput>) -> sema::Sema<sema::WriteOutput> {
+    fn apply_inner(
+        &mut self,
+        input: sema::Sema<sema::WriteInput>,
+    ) -> sema::Sema<sema::WriteOutput>;
+    fn observe_inner(
+        &self,
+        input: sema::Sema<sema::ReadInput>,
+    ) -> sema::Sema<sema::ReadOutput>;
+    fn apply(
+        &mut self,
+        input: sema::Sema<sema::WriteInput>,
+    ) -> sema::Sema<sema::WriteOutput> {
         let output = self.apply_inner(input);
         self.trace_sema_write_applied();
         output
     }
-
-    fn observe(&self, input: sema::Sema<sema::ReadInput>) -> sema::Sema<sema::ReadOutput> {
+    fn observe(
+        &self,
+        input: sema::Sema<sema::ReadInput>,
+    ) -> sema::Sema<sema::ReadOutput> {
         let output = self.observe_inner(input);
         self.trace_sema_read_observed();
         output
@@ -927,14 +802,14 @@ pub trait SemaEngine {
 
 pub trait UpgradeFrom<Previous>: Sized {
     type Error;
-
     fn upgrade_from(previous: Previous) -> Result<Self, Self::Error>;
 }
-
 pub trait AcceptPrevious<Previous>: UpgradeFrom<Previous> {
     fn accept_previous(previous: Previous) -> Result<Self, Self::Error> {
         Self::upgrade_from(previous)
     }
 }
-
-impl<Current, Previous> AcceptPrevious<Previous> for Current where Current: UpgradeFrom<Previous> {}
+impl<Current, Previous> AcceptPrevious<Previous> for Current
+where
+    Current: UpgradeFrom<Previous>,
+{}

@@ -92,8 +92,9 @@ resolution and projection work should be request-scoped and timeout-bounded.
 ## Remaining Runtime Growth
 
 - Persist registry, delegation, projection-policy, and projection-state records
-  in sema-engine after the deprecated `signal-core` dependency is gone from the
-  storage path.
+  in sema-engine. The deprecated `signal-core` storage-path blocker is gone;
+  the remaining work is the actual storage migration from the current in-memory
+  prototype.
 - Split the in-memory store into the target actor topology.
 - Replace the manual projection handoff with the designed daemon-to-daemon path
   that sends authorized projections to `cloud`.
