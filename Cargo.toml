@@ -19,9 +19,13 @@ path = "src/bin/domain-criome-daemon.rs"
 name = "domain-criome"
 path = "src/bin/domain-criome.rs"
 
+[features]
+default   = []
+nota-text = ["signal-domain-criome/nota-text", "meta-signal-domain-criome/nota-text"]
+
 [dependencies]
-nota-codec                 = { git = "https://github.com/LiGoldragon/nota-codec.git", branch = "main" }
 meta-signal-domain-criome = { git = "https://github.com/LiGoldragon/meta-signal-domain-criome.git", branch = "main" }
+nota-next                 = { git = "https://github.com/LiGoldragon/nota-next.git", branch = "main" }
 rkyv                       = { version = "0.8", default-features = false, features = ["std", "bytecheck", "little_endian", "pointer_width_32", "unaligned"] }
 signal-domain-criome       = { git = "https://github.com/LiGoldragon/signal-domain-criome.git", branch = "main" }
 signal-frame               = { git = "https://github.com/LiGoldragon/signal-frame.git", branch = "main" }

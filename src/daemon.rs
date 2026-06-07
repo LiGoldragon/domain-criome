@@ -27,17 +27,17 @@ impl Daemon {
             self.configuration.ordinary_socket_mode,
         )
         .bind()?;
-        let owner_listener = SocketBinding::new(
-            &self.configuration.owner_socket_path,
-            self.configuration.owner_socket_mode,
+        let meta_listener = SocketBinding::new(
+            &self.configuration.meta_socket_path,
+            self.configuration.meta_socket_mode,
         )
         .bind()?;
 
         let ordinary_store = Arc::clone(&store);
         thread::spawn(move || ListenerRuntime::new(ordinary_listener).run_ordinary(ordinary_store));
 
-        let owner_store = Arc::clone(&store);
-        thread::spawn(move || ListenerRuntime::new(owner_listener).run_owner(owner_store));
+        let meta_store = Arc::clone(&store);
+        thread::spawn(move || ListenerRuntime::new(meta_listener).run_meta(meta_store));
 
         loop {
             thread::sleep(Duration::from_secs(60));
@@ -48,8 +48,8 @@ impl Daemon {
         OrdinaryStreamRuntime::new(store, stream).serve()
     }
 
-    pub fn serve_owner_stream(store: &Store, stream: &mut UnixStream) -> Result<()> {
-        OwnerStreamRuntime::new(store, stream).serve()
+    pub fn serve_meta_stream(store: &Store, stream: &mut UnixStream) -> Result<()> {
+        MetaStreamRuntime::new(store, stream).serve()
     }
 }
 
@@ -77,16 +77,15 @@ impl ListenerRuntime {
         }
     }
 
-    pub fn run_owner(self, store: Arc<Mutex<Store>>) {
+    pub fn run_meta(self, store: Arc<Mutex<Store>>) {
         for stream in self.listener.incoming() {
             match stream {
                 Ok(mut stream) => {
-                    if let Err(error) = SharedStreamRuntime::new(&store, &mut stream).serve_owner()
-                    {
-                        eprintln!("(OwnerSocketError \"{error}\")");
+                    if let Err(error) = SharedStreamRuntime::new(&store, &mut stream).serve_meta() {
+                        eprintln!("(MetaSocketError \"{error}\")");
                     }
                 }
-                Err(error) => eprintln!("(OwnerAcceptError \"{error}\")"),
+                Err(error) => eprintln!("(MetaAcceptError \"{error}\")"),
             }
         }
     }
@@ -130,12 +129,12 @@ impl<'store, 'stream> OrdinaryStreamRuntime<'store, 'stream> {
     }
 }
 
-pub struct OwnerStreamRuntime<'store, 'stream> {
+pub struct MetaStreamRuntime<'store, 'stream> {
     store: &'store Store,
     stream: &'stream mut UnixStream,
 }
 
-impl<'store, 'stream> OwnerStreamRuntime<'store, 'stream> {
+impl<'store, 'stream> MetaStreamRuntime<'store, 'stream> {
     pub fn new(store: &'store Store, stream: &'stream mut UnixStream) -> Self {
         Self { store, stream }
     }
@@ -153,7 +152,7 @@ impl<'store, 'stream> OwnerStreamRuntime<'store, 'stream> {
                     MetaFrameIo::new(self.stream).write(&reply)?;
                 }
                 ExchangeFrameBody::Request { exchange, request } => {
-                    let reply = self.store.handle_owner_request(request);
+                    let reply = self.store.handle_meta_request(request);
                     let frame = meta_signal_domain_criome::Frame::new(
                         meta_signal_domain_criome::FrameBody::Reply { exchange, reply },
                     );
@@ -206,7 +205,7 @@ impl<'store, 'stream> SharedStreamRuntime<'store, 'stream> {
         }
     }
 
-    pub fn serve_owner(&mut self) -> Result<()> {
+    pub fn serve_meta(&mut self) -> Result<()> {
         loop {
             let frame = MetaFrameIo::new(self.stream).read()?;
             match frame.into_body() {
@@ -221,7 +220,7 @@ impl<'store, 'stream> SharedStreamRuntime<'store, 'stream> {
                 ExchangeFrameBody::Request { exchange, request } => {
                     let reply = {
                         let store = self.store.lock().map_err(|_| Error::StorePoisoned)?;
-                        store.handle_owner_request(request)
+                        store.handle_meta_request(request)
                     };
                     let frame = meta_signal_domain_criome::Frame::new(
                         meta_signal_domain_criome::FrameBody::Reply { exchange, reply },

@@ -52,7 +52,7 @@ Per Spirit records 321 and 322 (Maximum certainty, 2026-05-23):
 
 - The `domain-criome` runtime excludes provider APIs and direct CLI store
   access. Provider integrations live in `cloud`; CLI peers reach the daemon
-  through the ordinary or owner socket, never through direct registry-file
+  through the ordinary or meta socket, never through direct registry-file
   reads.
 - Runtime feature work uses a separate worktree bookmark per
   `skills/feature-development.md` §"When the repo is already locked", since
@@ -62,7 +62,7 @@ Per Spirit records 321 and 322 (Maximum certainty, 2026-05-23):
 
 The current prototype uses an in-memory `Store` with mutex-protected registry,
 delegation, projection-policy, and projection-state vectors. It binds ordinary
-and owner sockets, decodes real `signal-frame` frames, and serves both contract
+and meta sockets, decodes real `signal-frame` frames, and serves both contract
 surfaces through the same path the CLI uses. This is intentionally the same
 production-first concession as `cloud`: sema-engine persistence and actor
 splitting wait until the hand-written prototype proves the domain model.
@@ -72,14 +72,14 @@ The target daemon shape remains one actor per concern:
 - `RegistryStore` for registered domains and delegations;
 - `ProjectionEngine` for provider-neutral desired-state projection;
 - `Resolver` for intelligent resolution;
-- `PolicyStore` for owner policy.
+- `PolicyStore` for meta policy.
 
-The projection engine must not block the ordinary or owner listener. Slow
+The projection engine must not block the ordinary or meta listener. Slow
 resolution and projection work should be request-scoped and timeout-bounded.
 
 ## Current Implementation Slice
 
-1. Bind ordinary and owner Unix sockets.
+1. Bind ordinary and meta Unix sockets.
 2. Decode `signal-domain-criome` and `meta-signal-domain-criome` frames.
 3. Store domain registrations, delegations, projection policy, and projection
    declarations in memory.
@@ -118,7 +118,7 @@ component schema:
 
 - `signal-domain-criome` owns the ordinary Signal schema for public resolution,
   observation, projection, and validation messages.
-- `meta-signal-domain-criome` owns the meta (owner-only policy) Signal schema
+- `meta-signal-domain-criome` owns the meta policy Signal schema
   for registry, delegation, policy, and projection-declaration mutations.
 - `domain-criome/schema/nexus.schema` names the daemon-owned Nexus
   decision plane schema and imports the two contract `Input`/`Output` roots

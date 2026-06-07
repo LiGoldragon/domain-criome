@@ -7,12 +7,11 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use meta_signal_domain_criome::{
-    Delegation as OwnerDelegation, DomainDelegated, DomainRegistered, DomainRetired,
+    Delegation as MetaDelegation, DomainDelegated, DomainRegistered, DomainRetired,
     Operation as MetaOperation, PolicySet, ProjectionDeclaration, ProjectionDirective,
     ProjectionPolicy, ProjectionSet, Registration, Reply as MetaReply,
     RequestRejected as MetaRequestRejected, Retirement,
 };
-use nota_codec::NotaRecord;
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use signal_domain_criome::{
     Address, Delegation, DelegationListing, DelegationQuery, DomainListing, DomainName,
@@ -42,7 +41,10 @@ pub enum Error {
     CommandLineRoute(#[from] signal_frame::CommandLineRouteError),
 
     #[error("NOTA decode error: {0}")]
-    Nota(#[from] nota_codec::Error),
+    Nota(#[from] nota_next::NotaDecodeError),
+
+    #[error("command-line request error: {0}")]
+    CommandLine(#[from] signal_frame::CommandLineError),
 
     #[error("configuration archive decode failed")]
     ConfigurationArchiveDecode,
@@ -101,12 +103,12 @@ impl Error {
     }
 }
 
-#[derive(Archive, RkyvSerialize, RkyvDeserialize, NotaRecord, Debug, Clone, PartialEq, Eq)]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct DaemonConfiguration {
     pub ordinary_socket_path: String,
     pub ordinary_socket_mode: u32,
-    pub owner_socket_path: String,
-    pub owner_socket_mode: u32,
+    pub meta_socket_path: String,
+    pub meta_socket_mode: u32,
 }
 
 impl DaemonConfiguration {
@@ -200,7 +202,7 @@ impl<'record> AddressProjection<'record> {
 #[derive(Debug)]
 pub struct Store {
     domains: Mutex<Vec<DomainName>>,
-    delegations: Mutex<Vec<OwnerDelegation>>,
+    delegations: Mutex<Vec<MetaDelegation>>,
     policy: Mutex<meta_signal_domain_criome::Policy>,
     projections: Mutex<Vec<ProjectionState>>,
 }
@@ -235,14 +237,14 @@ impl Store {
         )
     }
 
-    pub fn handle_owner_request(
+    pub fn handle_meta_request(
         &self,
         request: meta_signal_domain_criome::ChannelRequest,
     ) -> meta_signal_domain_criome::ChannelReply {
         let replies = request
             .payloads
             .into_iter()
-            .map(|operation| SubReply::Ok(self.handle_owner_operation(operation)))
+            .map(|operation| SubReply::Ok(self.handle_meta_operation(operation)))
             .collect::<Vec<_>>();
         FrameReply::committed(
             NonEmpty::try_from_vec(replies).expect("signal request is guaranteed non-empty"),
@@ -257,7 +259,7 @@ impl Store {
         }
     }
 
-    fn handle_owner_operation(&self, operation: MetaOperation) -> MetaReply {
+    fn handle_meta_operation(&self, operation: MetaOperation) -> MetaReply {
         match operation {
             MetaOperation::RegisterDomain(registration) => self.register_domain(registration),
             MetaOperation::Delegate(delegation) => self.delegate(delegation),
@@ -364,7 +366,7 @@ impl Store {
         })
     }
 
-    fn delegate(&self, delegation: OwnerDelegation) -> MetaReply {
+    fn delegate(&self, delegation: MetaDelegation) -> MetaReply {
         if !self.domain_is_registered(&delegation.domain) {
             return MetaReply::RequestRejected(MetaRequestRejected {
                 operation: meta_signal_domain_criome::OperationKind::Delegate,
@@ -501,11 +503,11 @@ impl<'root> DomainRoot<'root> {
 }
 
 pub struct DelegationView<'delegation> {
-    delegation: &'delegation OwnerDelegation,
+    delegation: &'delegation MetaDelegation,
 }
 
-impl<'delegation> From<&'delegation OwnerDelegation> for DelegationView<'delegation> {
-    fn from(delegation: &'delegation OwnerDelegation) -> Self {
+impl<'delegation> From<&'delegation MetaDelegation> for DelegationView<'delegation> {
+    fn from(delegation: &'delegation MetaDelegation) -> Self {
         Self { delegation }
     }
 }

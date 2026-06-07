@@ -14,7 +14,7 @@ use meta_signal_domain_criome::{
     Operation as MetaOperation, ProjectionDeclaration, ProjectionDirective, ProjectionPolicy,
     Registration,
 };
-use nota_codec::NotaEncode;
+use nota_next::NotaEncode;
 use signal_domain_criome::{
     DomainName, DomainNameSystemRecord, Operation as DomainOperation, Projection, ProjectionQuery,
     ProjectionScope, RecordKind, RecordValue, RejectionReason, Reply as DomainReply,
@@ -26,9 +26,7 @@ use signal_frame::{
 };
 
 fn encode_to_text(value: &impl NotaEncode) -> String {
-    let mut encoder = nota_codec::Encoder::new();
-    value.encode(&mut encoder).expect("encode");
-    encoder.into_string()
+    value.to_nota()
 }
 
 fn exchange() -> ExchangeIdentifier {
@@ -59,7 +57,7 @@ fn configure_projection(store: &Store) {
     })
     .into_request();
     assert!(matches!(
-        store.handle_owner_request(register),
+        store.handle_meta_request(register),
         FrameReply::Accepted { .. }
     ));
 
@@ -72,7 +70,7 @@ fn configure_projection(store: &Store) {
     })
     .into_request();
     assert!(matches!(
-        store.handle_owner_request(policy),
+        store.handle_meta_request(policy),
         FrameReply::Accepted { .. }
     ));
 
@@ -87,13 +85,13 @@ fn configure_projection(store: &Store) {
     })
     .into_request();
     assert!(matches!(
-        store.handle_owner_request(projection),
+        store.handle_meta_request(projection),
         FrameReply::Accepted { .. }
     ));
 }
 
 #[test]
-fn owner_policy_enables_provider_neutral_projection_and_resolution() {
+fn meta_policy_enables_provider_neutral_projection_and_resolution() {
     let store = Store::new();
     configure_projection(&store);
 
@@ -229,9 +227,9 @@ fn daemon_process_starts_from_binary_configuration_and_answers_working_request()
         .expect("domain-criome-daemon starts");
 
     let ordinary_socket = directory.path().join("domain-criome.sock");
-    let owner_socket = directory.path().join("domain-criome-owner.sock");
+    let meta_socket = directory.path().join("domain-criome-meta.sock");
     wait_for_socket(&ordinary_socket);
-    wait_for_socket(&owner_socket);
+    wait_for_socket(&meta_socket);
 
     let mut stream = UnixStream::connect(&ordinary_socket).expect("client connects");
     let reply = resolution_reply_from_stream(&mut stream, "unknown.criome");
@@ -246,12 +244,12 @@ fn daemon_process_starts_from_binary_configuration_and_answers_working_request()
 }
 
 #[test]
-fn command_line_dispatch_routes_working_and_owner_heads() {
+fn command_line_dispatch_routes_working_and_meta_heads() {
     let working = DomainOperation::Project(ProjectionQuery {
         domain: DomainName::new("goldragon.criome"),
         scope: ProjectionScope::PublicRecords,
     });
-    let owner = MetaOperation::SetProjection(ProjectionDeclaration {
+    let meta = MetaOperation::SetProjection(ProjectionDeclaration {
         domain: DomainName::new("goldragon.criome"),
         records: vec![],
         redirects: vec![],
@@ -266,8 +264,8 @@ fn command_line_dispatch_routes_working_and_owner_heads() {
     assert_eq!(
         CommandLineDispatch::new()
             .route_head("SetProjection")
-            .expect("owner route"),
-        CommandLineSocket::Owner
+            .expect("meta route"),
+        CommandLineSocket::Meta
     );
 
     assert!(matches!(
@@ -275,8 +273,8 @@ fn command_line_dispatch_routes_working_and_owner_heads() {
         Ok(CliRequest::Working(_))
     ));
     assert!(matches!(
-        CliRequest::from_nota(&encode_to_text(&owner)),
-        Ok(CliRequest::Owner(_))
+        CliRequest::from_nota(&encode_to_text(&meta)),
+        Ok(CliRequest::Meta(_))
     ));
 }
 
@@ -327,11 +325,11 @@ fn daemon_configuration(directory: &Path) -> DaemonConfiguration {
     DaemonConfiguration {
         ordinary_socket_path: directory.join("domain-criome.sock").display().to_string(),
         ordinary_socket_mode: 0o600,
-        owner_socket_path: directory
-            .join("domain-criome-owner.sock")
+        meta_socket_path: directory
+            .join("domain-criome-meta.sock")
             .display()
             .to_string(),
-        owner_socket_mode: 0o600,
+        meta_socket_mode: 0o600,
     }
 }
 
