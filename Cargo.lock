@@ -57,7 +57,7 @@ checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
 name = "domain-criome"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "meta-signal-domain-criome",
  "nota-next",
@@ -67,6 +67,7 @@ dependencies = [
  "signal-frame",
  "tempfile",
  "thiserror",
+ "tokio",
  "triad-runtime",
 ]
 
@@ -600,7 +601,7 @@ dependencies = [
 [[package]]
 name = "signal-domain-criome"
 version = "0.1.0"
-source = "git+https://github.com/LiGoldragon/signal-domain-criome.git?branch=main#452fc6409a908b1adfe515df3dc5fbf7468ffb73"
+source = "git+https://github.com/LiGoldragon/signal-domain-criome.git?branch=main#0bebcede922e6978fe768c6e5c49471040ad0053"
 dependencies = [
  "nota-next",
  "rkyv",

@@ -62,10 +62,11 @@ Per Spirit records 321 and 322 (Maximum certainty, 2026-05-23):
 
 The current prototype uses an in-memory `Store` with mutex-protected registry,
 delegation, projection-policy, and projection-state vectors. It binds ordinary
-and meta sockets, decodes real `signal-frame` frames, and serves both contract
-surfaces through the same path the CLI uses. This is intentionally the same
-production-first concession as `cloud`: sema-engine persistence and actor
-splitting wait until the hand-written prototype proves the domain model.
+and meta sockets through the schema-generated actor-native listener shell,
+decodes length-prefixed schema frames, and serves both contract surfaces
+through the same path the CLI uses. This is intentionally the same
+production-first concession as `cloud`: sema-engine persistence and deeper
+actor splitting wait until the hand-written prototype proves the domain model.
 
 The target daemon shape remains one actor per concern:
 
@@ -80,7 +81,8 @@ resolution and projection work should be request-scoped and timeout-bounded.
 ## Current Implementation Slice
 
 1. Bind ordinary and meta Unix sockets.
-2. Decode `signal-domain-criome` and `meta-signal-domain-criome` frames.
+2. Decode length-prefixed `signal-domain-criome` and
+   `meta-signal-domain-criome` schema frames.
 3. Store domain registrations, delegations, projection policy, and projection
    declarations in memory.
 4. Resolve a registered public domain from configured projection records.
@@ -106,6 +108,8 @@ resolution and projection work should be request-scoped and timeout-bounded.
 - No direct provider API calls.
 - No direct state access from the CLI.
 - No deprecated `signal-core` dependency in new code.
+- No legacy handshake/exchange-frame transport; daemon sockets use the
+  generated actor-native length-prefixed schema-frame path.
 - `domain-criome-daemon` starts from one signal-encoded rkyv
   `DaemonConfiguration` file. Inline NOTA and `.nota` files are
   rejected by the daemon entrypoint; NOTA remains at the CLI/authoring
@@ -132,7 +136,8 @@ runtime belong in this runtime crate.
 
 `domain-criome/build.rs` is wired to the shared `schema_rust_next::build`
 driver for daemon runtime schemas: `schema/nexus.schema` targets
-`NexusRuntime`, and `schema/sema.schema` targets `SemaRuntime`. The build
+`NexusRuntime`, `schema/sema.schema` targets `SemaRuntime`, and the daemon
+schema emits the actor-native ordinary/meta listener shell. The build
 consumes the ordinary `signal-domain-criome` schema directory and the meta
 `meta-signal-domain-criome` schema directory from Cargo metadata, then
 validates each authored schema as a `SchemaSource` object through text and

@@ -28,6 +28,9 @@ Spirit records; not embellished.*
   `DaemonConfiguration` file. Inline NOTA and `.nota` configuration
   files are CLI/authoring surfaces and are rejected by the daemon
   entrypoint.
+- The daemon runtime is actor-native: generated listener machinery owns the
+  ordinary and meta sockets, and both sockets carry length-prefixed schema
+  frames. The older handshake/exchange-frame compatibility layer is retired.
 
 ## Principles
 

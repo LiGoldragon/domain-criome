@@ -32,7 +32,7 @@ impl SchemaBuild {
         let dependencies = ContractSchemaDependencies::from_environment();
         dependencies.emit_rerun_instructions();
         let Some(plan) =
-            dependencies.into_generation_plan(&self.crate_root, "domain-criome", "0.1.0")
+            dependencies.into_generation_plan(&self.crate_root, "domain-criome", "0.2.0")
         else {
             return;
         };

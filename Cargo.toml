@@ -1,6 +1,6 @@
 [package]
 name         = "domain-criome"
-version      = "0.1.0"
+version      = "0.2.0"
 edition      = "2024"
 rust-version = "1.88"
 license      = "MIT OR Apache-2.0"
@@ -30,6 +30,7 @@ rkyv                       = { version = "0.8", default-features = false, featur
 signal-domain-criome       = { git = "https://github.com/LiGoldragon/signal-domain-criome.git", branch = "main" }
 signal-frame               = { git = "https://github.com/LiGoldragon/signal-frame.git", branch = "main" }
 thiserror                  = "2"
+tokio                      = { version = "1.52", features = ["io-util", "rt-multi-thread", "time"] }
 triad-runtime              = { git = "https://github.com/LiGoldragon/triad-runtime.git", branch = "main" }
 
 [build-dependencies]

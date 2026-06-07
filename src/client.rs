@@ -3,15 +3,15 @@ use std::io::Write;
 use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
 
-use meta_signal_domain_criome::{ChannelRequest as MetaRequest, Reply as MetaReply};
-use nota_next::{NotaEncode, NotaSource};
-use signal_domain_criome::{Reply as DomainReply, Request as DomainRequest};
-use signal_frame::{
-    CommandLineSocket, ExchangeFrameBody, ExchangeIdentifier, ExchangeLane, HandshakeReply,
-    HandshakeRequest, LaneSequence, Reply as FrameReply, SessionEpoch, SubReply,
-};
+use meta_signal_domain_criome::Operation as MetaOperation;
+use meta_signal_domain_criome::schema::lib as meta;
+use nota_next::NotaSource;
+use signal_domain_criome::Operation as DomainOperation;
+use signal_domain_criome::schema::lib as ordinary;
+use signal_frame::CommandLineSocket;
+use triad_runtime::{FrameBody, LengthPrefixedCodec};
 
-use crate::frame_io::{MetaFrameIo, OrdinaryFrameIo};
+use crate::schema_bridge::{SchemaMetaInput, SchemaOrdinaryInput};
 use crate::{Error, Result};
 
 const DEFAULT_ORDINARY_SOCKET_PATH: &str = "/run/domain-criome/domain-criome.sock";
@@ -52,94 +52,58 @@ impl Client {
         Self::with_sockets(ordinary_socket_path, meta_socket_path)
     }
 
-    pub fn send_working(&self, request: DomainRequest) -> Result<DomainReply> {
+    pub fn send_working(&self, input: ordinary::Input) -> Result<ordinary::Output> {
         let mut stream = UnixStream::connect(&self.ordinary_socket_path)?;
-        self.handshake_working(&mut stream)?;
-        let exchange = ExchangeFactory::new().fresh_exchange();
-        let frame =
-            signal_domain_criome::Frame::new(ExchangeFrameBody::Request { exchange, request });
-        OrdinaryFrameIo::new(&mut stream).write(&frame)?;
-        stream.flush()?;
-
-        let reply = OrdinaryFrameIo::new(&mut stream).read()?;
-        match reply.into_body() {
-            ExchangeFrameBody::Reply {
-                exchange: reply_exchange,
-                reply,
-            } if reply_exchange == exchange => ReplyEnvelope::new(reply).unwrap_single_reply(),
-            _ => Err(Error::UnexpectedFrame),
-        }
+        SchemaConnection::new(&mut stream).exchange_working(input)
     }
 
-    pub fn send_meta(&self, request: MetaRequest) -> Result<MetaReply> {
+    pub fn send_meta(&self, input: meta::Input) -> Result<meta::Output> {
         let mut stream = UnixStream::connect(&self.meta_socket_path)?;
-        self.handshake_meta(&mut stream)?;
-        let exchange = ExchangeFactory::new().fresh_exchange();
-        let frame =
-            meta_signal_domain_criome::Frame::new(ExchangeFrameBody::Request { exchange, request });
-        MetaFrameIo::new(&mut stream).write(&frame)?;
-        stream.flush()?;
-
-        let reply = MetaFrameIo::new(&mut stream).read()?;
-        match reply.into_body() {
-            ExchangeFrameBody::Reply {
-                exchange: reply_exchange,
-                reply,
-            } if reply_exchange == exchange => MetaReplyEnvelope::new(reply).unwrap_single_reply(),
-            _ => Err(Error::UnexpectedFrame),
-        }
+        SchemaConnection::new(&mut stream).exchange_meta(input)
     }
 
     pub fn run_from_environment() -> Result<String> {
         let request = CliRequest::from_arguments(std::env::args_os().skip(1))?;
         let client = Self::from_environment();
         match request {
-            CliRequest::Working(request) => {
-                let reply = client.send_working(request)?;
-                ReplyText::new(&reply).encode()
-            }
-            CliRequest::Meta(request) => {
-                let reply = client.send_meta(request)?;
-                ReplyText::new(&reply).encode()
-            }
+            CliRequest::Working(request) => Ok(format!("{:?}", client.send_working(request)?)),
+            CliRequest::Meta(request) => Ok(format!("{:?}", client.send_meta(request)?)),
         }
     }
+}
 
-    fn handshake_working(&self, stream: &mut UnixStream) -> Result<()> {
-        let frame = signal_domain_criome::Frame::new(ExchangeFrameBody::HandshakeRequest(
-            HandshakeRequest::current(),
-        ));
-        OrdinaryFrameIo::new(stream).write(&frame)?;
-        let reply = OrdinaryFrameIo::new(stream).read()?;
-        match reply.into_body() {
-            ExchangeFrameBody::HandshakeReply(HandshakeReply::Accepted(_)) => Ok(()),
-            ExchangeFrameBody::HandshakeReply(HandshakeReply::Rejected(_)) => {
-                Err(Error::HandshakeRejected)
-            }
-            _ => Err(Error::UnexpectedFrame),
-        }
+pub struct SchemaConnection<'stream> {
+    stream: &'stream mut UnixStream,
+}
+
+impl<'stream> SchemaConnection<'stream> {
+    pub fn new(stream: &'stream mut UnixStream) -> Self {
+        Self { stream }
     }
 
-    fn handshake_meta(&self, stream: &mut UnixStream) -> Result<()> {
-        let frame = meta_signal_domain_criome::Frame::new(ExchangeFrameBody::HandshakeRequest(
-            HandshakeRequest::current(),
-        ));
-        MetaFrameIo::new(stream).write(&frame)?;
-        let reply = MetaFrameIo::new(stream).read()?;
-        match reply.into_body() {
-            ExchangeFrameBody::HandshakeReply(HandshakeReply::Accepted(_)) => Ok(()),
-            ExchangeFrameBody::HandshakeReply(HandshakeReply::Rejected(_)) => {
-                Err(Error::HandshakeRejected)
-            }
-            _ => Err(Error::UnexpectedFrame),
-        }
+    pub fn exchange_working(&mut self, input: ordinary::Input) -> Result<ordinary::Output> {
+        let codec = LengthPrefixedCodec::default();
+        codec.write_body(self.stream, &FrameBody::new(input.encode_signal_frame()?))?;
+        self.stream.flush()?;
+        let body = codec.read_body(self.stream)?;
+        let (_route, output) = ordinary::Output::decode_signal_frame(body.bytes())?;
+        Ok(output)
+    }
+
+    pub fn exchange_meta(&mut self, input: meta::Input) -> Result<meta::Output> {
+        let codec = LengthPrefixedCodec::default();
+        codec.write_body(self.stream, &FrameBody::new(input.encode_signal_frame()?))?;
+        self.stream.flush()?;
+        let body = codec.read_body(self.stream)?;
+        let (_route, output) = meta::Output::decode_signal_frame(body.bytes())?;
+        Ok(output)
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CliRequest {
-    Working(DomainRequest),
-    Meta(MetaRequest),
+    Working(ordinary::Input),
+    Meta(meta::Input),
 }
 
 impl CliRequest {
@@ -170,7 +134,7 @@ impl CliRequest {
 
     pub fn from_nota(text: &str) -> Result<Self> {
         match signal_frame::RequestHead::from_text(text)?
-            .route::<signal_domain_criome::Operation, meta_signal_domain_criome::Operation>()?
+            .route::<DomainOperation, MetaOperation>()?
         {
             CommandLineSocket::Working => Self::decode_working(text),
             CommandLineSocket::Meta => Self::decode_meta(text),
@@ -178,97 +142,16 @@ impl CliRequest {
     }
 
     fn decode_working(text: &str) -> Result<Self> {
-        let payload = NotaSource::new(text).parse::<DomainRequest>()?;
-        Ok(Self::Working(payload))
+        let payload = NotaSource::new(text).parse::<DomainOperation>()?;
+        Ok(Self::Working(
+            SchemaOrdinaryInput::from_operation(payload).into_input(),
+        ))
     }
 
     fn decode_meta(text: &str) -> Result<Self> {
-        let payload = NotaSource::new(text).parse::<MetaRequest>()?;
-        Ok(Self::Meta(payload))
-    }
-}
-
-pub struct ExchangeFactory {
-    epoch: SessionEpoch,
-    lane: ExchangeLane,
-}
-
-impl ExchangeFactory {
-    pub fn new() -> Self {
-        Self {
-            epoch: SessionEpoch::new(1),
-            lane: ExchangeLane::Connector,
-        }
-    }
-
-    pub fn fresh_exchange(&self) -> ExchangeIdentifier {
-        ExchangeIdentifier::new(self.epoch, self.lane, LaneSequence::first())
-    }
-}
-
-impl Default for ExchangeFactory {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-pub struct ReplyEnvelope {
-    reply: FrameReply<DomainReply>,
-}
-
-impl ReplyEnvelope {
-    pub fn new(reply: FrameReply<DomainReply>) -> Self {
-        Self { reply }
-    }
-
-    pub fn unwrap_single_reply(self) -> Result<DomainReply> {
-        match self.reply {
-            FrameReply::Accepted { per_operation, .. } => {
-                match per_operation.into_head_and_tail() {
-                    (SubReply::Ok(payload), tail) if tail.is_empty() => Ok(payload),
-                    _ => Err(Error::SignalRequestFailed),
-                }
-            }
-            FrameReply::Rejected { .. } => Err(Error::SignalRequestRejected),
-        }
-    }
-}
-
-pub struct MetaReplyEnvelope {
-    reply: FrameReply<MetaReply>,
-}
-
-impl MetaReplyEnvelope {
-    pub fn new(reply: FrameReply<MetaReply>) -> Self {
-        Self { reply }
-    }
-
-    pub fn unwrap_single_reply(self) -> Result<MetaReply> {
-        match self.reply {
-            FrameReply::Accepted { per_operation, .. } => {
-                match per_operation.into_head_and_tail() {
-                    (SubReply::Ok(payload), tail) if tail.is_empty() => Ok(payload),
-                    _ => Err(Error::SignalRequestFailed),
-                }
-            }
-            FrameReply::Rejected { .. } => Err(Error::SignalRequestRejected),
-        }
-    }
-}
-
-pub struct ReplyText<'reply, Reply> {
-    reply: &'reply Reply,
-}
-
-impl<'reply, Reply> ReplyText<'reply, Reply>
-where
-    Reply: NotaEncode,
-{
-    pub fn new(reply: &'reply Reply) -> Self {
-        Self { reply }
-    }
-
-    pub fn encode(&self) -> Result<String> {
-        Ok(self.reply.to_nota())
+        let payload = NotaSource::new(text).parse::<MetaOperation>()?;
+        Ok(Self::Meta(
+            SchemaMetaInput::from_operation(payload).into_input(),
+        ))
     }
 }

@@ -6,6 +6,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
+use meta_signal_domain_criome::schema::lib as meta_schema;
 use meta_signal_domain_criome::{
     Delegation as MetaDelegation, DomainDelegated, DomainRegistered, DomainRetired,
     Operation as MetaOperation, PolicySet, ProjectionDeclaration, ProjectionDirective,
@@ -13,6 +14,7 @@ use meta_signal_domain_criome::{
     RequestRejected as MetaRequestRejected, Retirement,
 };
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
+use signal_domain_criome::schema::lib as ordinary_schema;
 use signal_domain_criome::{
     Address, Delegation, DelegationListing, DelegationQuery, DomainListing, DomainName,
     DomainNameSystemRecord, DomainQuery, NetworkAddress, Observation, ObservationResult,
@@ -22,10 +24,16 @@ use signal_domain_criome::{
 };
 use signal_frame::{NonEmpty, Reply as FrameReply, SubReply};
 
+use crate::schema_bridge::{
+    SchemaMetaInput, SchemaMetaOutput, SchemaOrdinaryInput, SchemaOrdinaryOutput,
+};
+
 pub mod client;
 pub mod daemon;
 pub mod daemon_command;
-pub mod frame_io;
+pub mod schema;
+mod schema_bridge;
+pub mod schema_daemon;
 
 pub use daemon_command::{DomainCriomeDaemonCommand, DomainCriomeDaemonConfigurationFile};
 
@@ -36,6 +44,15 @@ pub enum Error {
 
     #[error("signal frame error: {0}")]
     Frame(#[from] signal_frame::FrameError),
+
+    #[error("length-prefixed frame error: {0}")]
+    LengthPrefixedFrame(#[from] triad_runtime::FrameError),
+
+    #[error("ordinary schema frame error: {0}")]
+    OrdinarySchemaFrame(ordinary_schema::SignalFrameError),
+
+    #[error("meta schema frame error: {0}")]
+    MetaSchemaFrame(meta_schema::SignalFrameError),
 
     #[error("command-line route error: {0}")]
     CommandLineRoute(#[from] signal_frame::CommandLineRouteError),
@@ -76,14 +93,14 @@ pub enum Error {
     #[error("unexpected signal frame for this socket")]
     UnexpectedFrame,
 
+    #[error("request read timed out")]
+    RequestReadTimedOut,
+
     #[error("trailing input after single NOTA request")]
     TrailingInput,
 
     #[error("connection closed before a complete frame arrived")]
     ConnectionClosed,
-
-    #[error("signal handshake was rejected")]
-    HandshakeRejected,
 
     #[error("signal request was rejected before execution")]
     SignalRequestRejected,
@@ -100,6 +117,18 @@ pub type Result<T> = std::result::Result<T, Error>;
 impl Error {
     pub fn command_line_route(error: signal_frame::CommandLineRouteError) -> Self {
         Self::CommandLineRoute(error)
+    }
+}
+
+impl From<ordinary_schema::SignalFrameError> for Error {
+    fn from(error: ordinary_schema::SignalFrameError) -> Self {
+        Self::OrdinarySchemaFrame(error)
+    }
+}
+
+impl From<meta_schema::SignalFrameError> for Error {
+    fn from(error: meta_schema::SignalFrameError) -> Self {
+        Self::MetaSchemaFrame(error)
     }
 }
 
@@ -121,6 +150,24 @@ impl DaemonConfiguration {
         let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(self)
             .map_err(|_| Error::ConfigurationArchiveEncode)?;
         Ok(bytes.into_vec())
+    }
+}
+
+impl triad_runtime::DaemonConfiguration for DaemonConfiguration {
+    fn socket_path(&self) -> &Path {
+        Path::new(&self.ordinary_socket_path)
+    }
+
+    fn meta_socket_path(&self) -> Option<&Path> {
+        Some(Path::new(&self.meta_socket_path))
+    }
+
+    fn database_path(&self) -> &Path {
+        Path::new("")
+    }
+
+    fn meta_socket_mode(&self) -> Option<triad_runtime::SocketMode> {
+        Some(triad_runtime::SocketMode::new(self.meta_socket_mode))
     }
 }
 
@@ -249,6 +296,22 @@ impl Store {
         FrameReply::committed(
             NonEmpty::try_from_vec(replies).expect("signal request is guaranteed non-empty"),
         )
+    }
+
+    pub fn handle_ordinary_input(&self, input: ordinary_schema::Input) -> ordinary_schema::Output {
+        match SchemaOrdinaryInput::new(input).into_operation() {
+            Some(operation) => {
+                SchemaOrdinaryOutput::new(self.handle_ordinary_operation(operation)).into_output()
+            }
+            None => ordinary_schema::Output::Validated(ordinary_schema::ValidationReport::new(
+                Vec::new(),
+            )),
+        }
+    }
+
+    pub fn handle_meta_input(&self, input: meta_schema::Input) -> meta_schema::Output {
+        let operation = SchemaMetaInput::new(input).into_operation();
+        SchemaMetaOutput::new(self.handle_meta_operation(operation)).into_output()
     }
 
     fn handle_ordinary_operation(&self, operation: DomainOperation) -> DomainReply {
