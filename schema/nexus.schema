@@ -26,9 +26,9 @@
   ReplyToSignal SignalOutput
   Continue NexusInput
 
-  SignalInput [OrdinaryInput MetaInput]
-  SignalOutput [OrdinaryOutput MetaOutput]
+  SignalInput [(OrdinaryInput OrdinaryInput) (MetaInput MetaInput)]
+  SignalOutput [(OrdinaryOutput OrdinaryOutput) (MetaOutput MetaOutput)]
 
-  NexusInput [SignalArrived SemaReadCompleted SemaWriteCompleted]
-  NexusOutput [CommandSemaRead CommandSemaWrite ReplyToSignal Continue]
+  NexusInput [(SignalArrived SignalArrived) (SemaReadCompleted SemaReadCompleted) (SemaWriteCompleted SemaWriteCompleted)]
+  NexusOutput [(CommandSemaRead CommandSemaRead) (CommandSemaWrite CommandSemaWrite) (ReplyToSignal ReplyToSignal) (Continue Continue)]
 }

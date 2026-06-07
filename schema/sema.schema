@@ -30,23 +30,23 @@
 [ReadInput WriteInput]
 [ReadOutput WriteOutput]
 {
-  ReadInput [Observe Resolve Project Validate]
+  ReadInput [(Observe Observe) (Resolve Resolve) (Project Project) (Validate Validate)]
   Observe Observation
   Resolve ResolutionQuery
   Project ProjectionQuery
   Validate Validation
 
-  ReadOutput [Observed Resolved Projected Validated Missed]
+  ReadOutput [(Observed Observed) (Resolved Resolved) (Projected Projected) (Validated Validated) (Missed Missed)]
   Missed RejectionReport
 
-  WriteInput [RegisterDomain Delegate RetireDomain SetPolicy SetProjection]
+  WriteInput [(RegisterDomain RegisterDomain) (Delegate Delegate) (RetireDomain RetireDomain) (SetPolicy SetPolicy) (SetProjection SetProjection)]
   RegisterDomain Registration
   Delegate Delegation
   RetireDomain Retirement
   SetPolicy Policy
   SetProjection ProjectionDeclaration
 
-  WriteOutput [DomainRegistered DelegationSet DomainRetired PolicySet ProjectionSet RequestRejected]
+  WriteOutput [(DomainRegistered DomainRegistered) (DelegationSet DelegationSet) (DomainRetired DomainRetired) (PolicySet PolicySet) (ProjectionSet ProjectionSet) (RequestRejected RequestRejected)]
 
   RejectionReport { reason RejectionReason marker StateMarker }
   RejectionReason [DomainUnknown NotAuthoritative DomainAlreadyRegistered ProjectionRejected]
