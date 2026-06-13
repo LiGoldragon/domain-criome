@@ -114,6 +114,7 @@ dependencies = [
  "nota-next",
  "rkyv",
  "schema-rust-next",
+ "sema-engine",
  "signal-domain-criome",
  "signal-frame",
  "tempfile",
@@ -527,6 +528,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "redb"
+version = "4.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e925444704b5f17d32bf42f5b6e2df050bceebc3dcd6e71cc73dafe8092e839"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "rend"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -604,6 +614,29 @@ dependencies = [
  "quote",
  "schema-next",
  "syn",
+ "thiserror",
+]
+
+[[package]]
+name = "sema"
+version = "0.1.1"
+source = "git+https://github.com/LiGoldragon/sema.git?branch=main#da96de248cc3fe2e3191ca524d60cfc378f62a11"
+dependencies = [
+ "redb",
+ "rkyv",
+ "thiserror",
+]
+
+[[package]]
+name = "sema-engine"
+version = "0.4.0"
+source = "git+https://github.com/LiGoldragon/sema-engine.git?branch=main#909eaa0b9f3c902662fb6081c050ae3337e578c9"
+dependencies = [
+ "blake3",
+ "rkyv",
+ "sema",
+ "signal-frame",
+ "signal-sema",
  "thiserror",
 ]
 
@@ -693,6 +726,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "signal-sema"
+version = "0.2.0"
+source = "git+https://github.com/LiGoldragon/signal-sema.git?branch=main#33f62840678530289e9b96485453f7d86e343182"
+dependencies = [
+ "rkyv",
+ "thiserror",
 ]
 
 [[package]]

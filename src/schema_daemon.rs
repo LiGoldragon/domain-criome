@@ -5,7 +5,8 @@ use meta_signal_domain_criome::schema::lib as meta;
 use signal_domain_criome::schema::lib::{Input, Output};
 use tokio::io::AsyncWriteExt;
 use triad_runtime::{
-    AcceptedConnection, ConnectionContext, FrameBody, LengthPrefixedCodec, MaximumFrameLength,
+    AcceptedConnection, BindingSurface, ConnectionContext, FrameBody, LengthPrefixedCodec,
+    MaximumFrameLength,
 };
 
 use crate::schema::daemon::ComponentDaemon;
@@ -31,8 +32,8 @@ impl ComponentDaemon for DomainCriomeDaemon {
         DaemonConfiguration::from_rkyv_bytes(&bytes)
     }
 
-    fn build_runtime(_configuration: &Self::Configuration) -> Result<Self::Engine> {
-        Ok(Arc::new(Store::new()))
+    fn build_runtime(configuration: &Self::Configuration) -> Result<Self::Engine> {
+        Ok(Arc::new(Store::open(configuration.database_path())?))
     }
 
     async fn handle_working_input(
@@ -55,7 +56,7 @@ impl ComponentDaemon for DomainCriomeDaemon {
         .await
         .map_err(|_| Error::RequestReadTimedOut)??;
         let (_route, input) = meta::Input::decode_signal_frame(body.bytes())?;
-        let reply = engine.handle_meta_input(input);
+        let reply = engine.try_handle_meta_input(input)?;
         codec
             .write_body_async(
                 connection.stream_mut(),

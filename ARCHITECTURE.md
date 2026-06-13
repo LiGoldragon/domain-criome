@@ -60,13 +60,13 @@ Per Spirit records 321 and 322 (Maximum certainty, 2026-05-23):
 
 ## Runtime Shape
 
-The current prototype uses an in-memory `Store` with mutex-protected registry,
-delegation, projection-policy, and projection-state vectors. It binds ordinary
-and meta sockets through the schema-generated actor-native listener shell,
-decodes length-prefixed schema frames, and serves both contract surfaces
-through the same path the CLI uses. This is intentionally the same
-production-first concession as `cloud`: sema-engine persistence and deeper
-actor splitting wait until the hand-written prototype proves the domain model.
+The current runtime uses a `Store` with mutex-protected materialized views for
+registry, delegation, projection policy, and projection state. Successful meta
+mutations write through a daemon-owned sema-engine table first; daemon startup
+rebuilds the materialized views from that table. It binds ordinary and meta
+sockets through the schema-generated actor-native listener shell, decodes
+length-prefixed schema frames, and serves both contract surfaces through the
+same path the CLI uses.
 
 The target daemon shape remains one actor per concern:
 
@@ -84,7 +84,7 @@ resolution and projection work should be request-scoped and timeout-bounded.
 2. Decode length-prefixed `signal-domain-criome` and
    `meta-signal-domain-criome` schema frames.
 3. Store domain registrations, delegations, projection policy, and projection
-   declarations in memory.
+   declarations in sema-engine, with in-memory views rebuilt on daemon startup.
 4. Resolve a registered public domain from configured projection records.
 5. Project public records for a registered domain.
 6. Project redirect rules for a registered domain.
@@ -93,11 +93,7 @@ resolution and projection work should be request-scoped and timeout-bounded.
 
 ## Remaining Runtime Growth
 
-- Persist registry, delegation, projection-policy, and projection-state records
-  in sema-engine. The deprecated `signal-core` storage-path blocker is gone;
-  the remaining work is the actual storage migration from the current in-memory
-  prototype.
-- Split the in-memory store into the target actor topology.
+- Split the materialized store into the target actor topology.
 - Replace the manual projection handoff with the designed daemon-to-daemon path
   that sends authorized projections to `cloud`.
 

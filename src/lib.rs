@@ -9,11 +9,16 @@ use std::sync::Mutex;
 use meta_signal_domain_criome::schema::lib as meta_schema;
 use meta_signal_domain_criome::{
     Delegation as MetaDelegation, DomainDelegated, DomainRegistered, DomainRetired,
-    Operation as MetaOperation, PolicySet, ProjectionDeclaration, ProjectionDirective,
+    Operation as MetaOperation, Policy, PolicySet, ProjectionDeclaration, ProjectionDirective,
     ProjectionPolicy, ProjectionSet, Registration, Reply as MetaReply,
     RequestRejected as MetaRequestRejected, Retirement,
 };
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
+use sema_engine::{
+    CommitRequest, Engine, EngineOpen, EngineRecord, FamilyName, QueryPlan, RecordKey, SchemaHash,
+    SchemaVersion, TableDescriptor, TableName, TableReference, VersionedStoreName,
+    VersioningPolicy,
+};
 use signal_domain_criome::schema::lib as ordinary_schema;
 use signal_domain_criome::{
     Address, Delegation, DelegationListing, DelegationQuery, DomainListing, DomainName,
@@ -36,6 +41,11 @@ mod schema_bridge;
 pub mod schema_daemon;
 
 pub use daemon_command::{DomainCriomeDaemonCommand, DomainCriomeDaemonConfigurationFile};
+
+const DOMAIN_CRIOME_SCHEMA_VERSION: SchemaVersion = SchemaVersion::new(1);
+const DOMAIN_CRIOME_STATE_TABLE: TableName = TableName::new("domain-criome.state");
+const DOMAIN_CRIOME_STATE_FAMILY: &str = "domain-criome-state";
+const POLICY_RECORD_KEY: &str = "policy";
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -86,6 +96,9 @@ pub enum Error {
 
     #[error("argument: {0}")]
     Argument(#[from] triad_runtime::ArgumentError),
+
+    #[error("domain-criome sema engine: {0}")]
+    SemaEngine(#[from] sema_engine::Error),
 
     #[error("expected exactly one argument")]
     ExpectedSingleArgument,
@@ -141,6 +154,7 @@ pub struct DaemonConfiguration {
     pub ordinary_socket_mode: u32,
     pub meta_socket_path: String,
     pub meta_socket_mode: u32,
+    pub database_path: String,
 }
 
 impl DaemonConfiguration {
@@ -166,7 +180,7 @@ impl triad_runtime::BindingSurface for DaemonConfiguration {
     }
 
     fn database_path(&self) -> &Path {
-        Path::new("")
+        Path::new(&self.database_path)
     }
 
     fn meta_socket_mode(&self) -> Option<triad_runtime::SocketMode> {
@@ -174,7 +188,7 @@ impl triad_runtime::BindingSurface for DaemonConfiguration {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ProjectionState {
     domain: DomainName,
     records: Vec<DomainNameSystemRecord>,
@@ -249,12 +263,12 @@ impl<'record> AddressProjection<'record> {
     }
 }
 
-#[derive(Debug)]
 pub struct Store {
     domains: Mutex<Vec<DomainName>>,
     delegations: Mutex<Vec<MetaDelegation>>,
-    policy: Mutex<meta_signal_domain_criome::Policy>,
+    policy: Mutex<Policy>,
     projections: Mutex<Vec<ProjectionState>>,
+    tables: Option<DomainTables>,
 }
 
 impl Store {
@@ -262,15 +276,20 @@ impl Store {
         Self {
             domains: Mutex::new(Vec::new()),
             delegations: Mutex::new(Vec::new()),
-            policy: Mutex::new(meta_signal_domain_criome::Policy {
+            policy: Mutex::new(Policy {
                 projections: Vec::new(),
             }),
             projections: Mutex::new(Vec::new()),
+            tables: None,
         }
     }
 
-    pub fn open(_path: impl AsRef<Path>) -> Result<Self> {
-        Ok(Self::new())
+    pub fn open(path: impl AsRef<Path>) -> Result<Self> {
+        let tables = DomainTables::open(path.as_ref())?;
+        let mut store = Self::new();
+        store.load_materialized_records(tables.records()?);
+        store.tables = Some(tables);
+        Ok(store)
     }
 
     pub fn handle_ordinary_request(
@@ -294,7 +313,12 @@ impl Store {
         let replies = request
             .payloads
             .into_iter()
-            .map(|operation| SubReply::Ok(self.handle_meta_operation(operation)))
+            .map(|operation| {
+                SubReply::Ok(
+                    self.try_handle_meta_operation(operation)
+                        .expect("domain-criome meta operation"),
+                )
+            })
             .collect::<Vec<_>>();
         FrameReply::committed(
             NonEmpty::try_from_vec(replies).expect("signal request is guaranteed non-empty"),
@@ -313,8 +337,13 @@ impl Store {
     }
 
     pub fn handle_meta_input(&self, input: meta_schema::Input) -> meta_schema::Output {
+        self.try_handle_meta_input(input)
+            .expect("domain-criome handles meta input")
+    }
+
+    pub fn try_handle_meta_input(&self, input: meta_schema::Input) -> Result<meta_schema::Output> {
         let operation = SchemaMetaInput::new(input).into_operation();
-        SchemaMetaOutput::new(self.handle_meta_operation(operation)).into_output()
+        Ok(SchemaMetaOutput::new(self.try_handle_meta_operation(operation)?).into_output())
     }
 
     fn handle_ordinary_operation(&self, operation: DomainOperation) -> DomainReply {
@@ -325,7 +354,7 @@ impl Store {
         }
     }
 
-    fn handle_meta_operation(&self, operation: MetaOperation) -> MetaReply {
+    fn try_handle_meta_operation(&self, operation: MetaOperation) -> Result<MetaReply> {
         match operation {
             MetaOperation::RegisterDomain(registration) => self.register_domain(registration),
             MetaOperation::Delegate(delegation) => self.delegate(delegation),
@@ -418,50 +447,65 @@ impl Store {
         DelegationListing { delegations }
     }
 
-    fn register_domain(&self, registration: Registration) -> MetaReply {
-        let mut domains = self.domains.lock().expect("domains mutex");
-        if domains.iter().any(|domain| domain == &registration.domain) {
-            return MetaReply::RequestRejected(MetaRequestRejected {
+    fn register_domain(&self, registration: Registration) -> Result<MetaReply> {
+        if self.domain_is_registered(&registration.domain) {
+            return Ok(MetaReply::RequestRejected(MetaRequestRejected {
                 operation: meta_signal_domain_criome::OperationKind::RegisterDomain,
                 reason: meta_signal_domain_criome::RejectionReason::DomainAlreadyRegistered,
-            });
+            }));
         }
+        self.persist_upserts(vec![StoredStateRecord::registered_domain(
+            registration.domain.clone(),
+        )])?;
+        let mut domains = self.domains.lock().expect("domains mutex");
         domains.push(registration.domain.clone());
-        MetaReply::DomainRegistered(DomainRegistered {
+        Ok(MetaReply::DomainRegistered(DomainRegistered {
             domain: registration.domain,
-        })
+        }))
     }
 
-    fn delegate(&self, delegation: MetaDelegation) -> MetaReply {
+    fn delegate(&self, delegation: MetaDelegation) -> Result<MetaReply> {
         if !self.domain_is_registered(&delegation.domain) {
-            return MetaReply::RequestRejected(MetaRequestRejected {
+            return Ok(MetaReply::RequestRejected(MetaRequestRejected {
                 operation: meta_signal_domain_criome::OperationKind::Delegate,
                 reason: meta_signal_domain_criome::RejectionReason::DomainUnknown,
-            });
+            }));
         }
-        let mut delegations = self.delegations.lock().expect("delegations mutex");
-        if delegations.iter().any(|existing| {
-            existing.domain == delegation.domain && existing.name == delegation.name
-        }) {
-            return MetaReply::RequestRejected(MetaRequestRejected {
+        if self
+            .delegations
+            .lock()
+            .expect("delegations mutex")
+            .iter()
+            .any(|existing| {
+                existing.domain == delegation.domain && existing.name == delegation.name
+            })
+        {
+            return Ok(MetaReply::RequestRejected(MetaRequestRejected {
                 operation: meta_signal_domain_criome::OperationKind::Delegate,
                 reason: meta_signal_domain_criome::RejectionReason::DelegationAlreadyExists,
-            });
+            }));
         }
+        self.persist_upserts(vec![StoredStateRecord::delegation(delegation.clone())])?;
+        let mut delegations = self.delegations.lock().expect("delegations mutex");
         delegations.push(delegation.clone());
-        MetaReply::DomainDelegated(DomainDelegated {
+        Ok(MetaReply::DomainDelegated(DomainDelegated {
             name: delegation.name,
             domain: delegation.domain,
-        })
+        }))
     }
 
-    fn retire_domain(&self, retirement: Retirement) -> MetaReply {
+    fn retire_domain(&self, retirement: Retirement) -> Result<MetaReply> {
         if !self.domain_is_registered(&retirement.domain) {
-            return MetaReply::RequestRejected(MetaRequestRejected {
+            return Ok(MetaReply::RequestRejected(MetaRequestRejected {
                 operation: meta_signal_domain_criome::OperationKind::RetireDomain,
                 reason: meta_signal_domain_criome::RejectionReason::DomainUnknown,
-            });
+            }));
         }
+        let mut policy = self.policy.lock().expect("policy mutex").clone();
+        policy
+            .projections
+            .retain(|policy| policy.domain != retirement.domain);
+        self.persist_retirement(&retirement.domain, policy.clone())?;
         self.domains
             .lock()
             .expect("domains mutex")
@@ -474,35 +518,33 @@ impl Store {
             .lock()
             .expect("projections mutex")
             .retain(|projection| projection.domain != retirement.domain);
-        self.policy
-            .lock()
-            .expect("policy mutex")
-            .projections
-            .retain(|policy| policy.domain != retirement.domain);
-        MetaReply::DomainRetired(DomainRetired {
-            domain: retirement.domain,
-        })
-    }
-
-    fn set_policy(&self, policy: meta_signal_domain_criome::Policy) -> MetaReply {
-        let projection_policy_count = policy.projections.len() as u64;
         *self.policy.lock().expect("policy mutex") = policy;
-        MetaReply::PolicySet(PolicySet {
-            projection_policy_count,
-        })
+        Ok(MetaReply::DomainRetired(DomainRetired {
+            domain: retirement.domain,
+        }))
     }
 
-    fn set_projection(&self, declaration: ProjectionDeclaration) -> MetaReply {
+    fn set_policy(&self, policy: Policy) -> Result<MetaReply> {
+        let projection_policy_count = policy.projections.len() as u64;
+        self.persist_upserts(vec![StoredStateRecord::policy(policy.clone())])?;
+        *self.policy.lock().expect("policy mutex") = policy;
+        Ok(MetaReply::PolicySet(PolicySet {
+            projection_policy_count,
+        }))
+    }
+
+    fn set_projection(&self, declaration: ProjectionDeclaration) -> Result<MetaReply> {
         if !self.domain_is_registered(&declaration.domain) {
-            return MetaReply::RequestRejected(MetaRequestRejected {
+            return Ok(MetaReply::RequestRejected(MetaRequestRejected {
                 operation: meta_signal_domain_criome::OperationKind::SetProjection,
                 reason: meta_signal_domain_criome::RejectionReason::DomainUnknown,
-            });
+            }));
         }
         let domain = declaration.domain.clone();
         let record_count = declaration.records.len() as u64;
         let redirect_count = declaration.redirects.len() as u64;
         let state = ProjectionState::from_declaration(declaration);
+        self.persist_upserts(vec![StoredStateRecord::projection(state.clone())])?;
         let mut projections = self.projections.lock().expect("projections mutex");
         if let Some(existing) = projections
             .iter_mut()
@@ -512,11 +554,11 @@ impl Store {
         } else {
             projections.push(state);
         }
-        MetaReply::ProjectionSet(ProjectionSet {
+        Ok(MetaReply::ProjectionSet(ProjectionSet {
             domain,
             record_count,
             redirect_count,
-        })
+        }))
     }
 
     fn domain_is_registered(&self, domain: &DomainName) -> bool {
@@ -545,6 +587,204 @@ impl Store {
                 .clone(),
         )
         .allows(domain, scope)
+    }
+
+    fn load_materialized_records(&self, records: Vec<StoredStateRecord>) {
+        for record in records {
+            match record {
+                StoredStateRecord::RegisteredDomain(domain) => {
+                    self.domains.lock().expect("domains mutex").push(domain);
+                }
+                StoredStateRecord::Delegation(delegation) => {
+                    self.delegations
+                        .lock()
+                        .expect("delegations mutex")
+                        .push(delegation);
+                }
+                StoredStateRecord::Policy(policy) => {
+                    *self.policy.lock().expect("policy mutex") = policy;
+                }
+                StoredStateRecord::Projection(projection) => {
+                    self.projections
+                        .lock()
+                        .expect("projections mutex")
+                        .push(projection);
+                }
+            }
+        }
+    }
+
+    fn persist_upserts(&self, records: Vec<StoredStateRecord>) -> Result<()> {
+        if let Some(tables) = self.tables.as_ref() {
+            tables.commit_upserts(records)?;
+        }
+        Ok(())
+    }
+
+    fn persist_retirement(&self, domain: &DomainName, policy: Policy) -> Result<()> {
+        if let Some(tables) = self.tables.as_ref() {
+            tables.retire_domain(domain, policy)?;
+        }
+        Ok(())
+    }
+}
+
+impl std::fmt::Debug for Store {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("Store")
+            .field(
+                "domain_count",
+                &self.domains.lock().expect("domains mutex").len(),
+            )
+            .field(
+                "delegation_count",
+                &self.delegations.lock().expect("delegations mutex").len(),
+            )
+            .field(
+                "projection_count",
+                &self.projections.lock().expect("projections mutex").len(),
+            )
+            .field("durable", &self.tables.is_some())
+            .finish()
+    }
+}
+
+pub struct DomainTables {
+    engine: Engine,
+    records: TableReference<StoredStateRecord>,
+}
+
+impl DomainTables {
+    pub fn open(path: &Path) -> Result<Self> {
+        let mut engine = Engine::open(Self::engine_open(path))?;
+        let records = engine.register_table(Self::state_descriptor())?;
+        Ok(Self { engine, records })
+    }
+
+    fn engine_open(path: &Path) -> EngineOpen {
+        EngineOpen::new(path.to_path_buf(), DOMAIN_CRIOME_SCHEMA_VERSION)
+            .with_versioning(Self::versioning_policy())
+    }
+
+    fn versioning_policy() -> VersioningPolicy {
+        VersioningPolicy::new(VersionedStoreName::new("domain-criome"))
+    }
+
+    fn state_descriptor() -> TableDescriptor<StoredStateRecord> {
+        TableDescriptor::new(
+            DOMAIN_CRIOME_STATE_TABLE,
+            FamilyName::new(DOMAIN_CRIOME_STATE_FAMILY),
+            SchemaHash::for_label(format!(
+                "{DOMAIN_CRIOME_STATE_FAMILY}-v{}",
+                DOMAIN_CRIOME_SCHEMA_VERSION.value()
+            )),
+        )
+    }
+
+    fn records(&self) -> Result<Vec<StoredStateRecord>> {
+        Ok(self
+            .engine
+            .match_records(QueryPlan::all(self.records))?
+            .records()
+            .to_vec())
+    }
+
+    fn record(&self, record: &StoredStateRecord) -> Result<Option<StoredStateRecord>> {
+        Ok(self
+            .engine
+            .match_records(QueryPlan::key(self.records, record.record_key()))?
+            .records()
+            .first()
+            .cloned())
+    }
+
+    fn commit_upserts(&self, records: Vec<StoredStateRecord>) -> Result<()> {
+        let mut request = CommitRequest::new(self.records);
+        for record in records {
+            if self.record(&record)?.is_some() {
+                request = request.mutate(record);
+            } else {
+                request = request.assert(record);
+            }
+        }
+        if request.operation_count() > 0 {
+            self.engine.commit(request)?;
+        }
+        Ok(())
+    }
+
+    fn retire_domain(&self, domain: &DomainName, policy: Policy) -> Result<()> {
+        let mut request = CommitRequest::new(self.records);
+        for record in self.records()? {
+            if record.belongs_to_domain(domain) {
+                request = request.retract(record.record_key());
+            }
+        }
+        let policy = StoredStateRecord::policy(policy);
+        if self.record(&policy)?.is_some() {
+            request = request.mutate(policy);
+        } else {
+            request = request.assert(policy);
+        }
+        if request.operation_count() > 0 {
+            self.engine.commit(request)?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Debug, Clone, PartialEq, Eq)]
+pub enum StoredStateRecord {
+    RegisteredDomain(DomainName),
+    Delegation(MetaDelegation),
+    Policy(Policy),
+    Projection(ProjectionState),
+}
+
+impl StoredStateRecord {
+    pub fn registered_domain(domain: DomainName) -> Self {
+        Self::RegisteredDomain(domain)
+    }
+
+    pub fn delegation(delegation: MetaDelegation) -> Self {
+        Self::Delegation(delegation)
+    }
+
+    pub fn policy(policy: Policy) -> Self {
+        Self::Policy(policy)
+    }
+
+    pub fn projection(projection: ProjectionState) -> Self {
+        Self::Projection(projection)
+    }
+
+    fn belongs_to_domain(&self, domain: &DomainName) -> bool {
+        match self {
+            Self::RegisteredDomain(record_domain) => record_domain == domain,
+            Self::Delegation(delegation) => &delegation.domain == domain,
+            Self::Policy(_) => false,
+            Self::Projection(projection) => &projection.domain == domain,
+        }
+    }
+
+    fn key_string(&self) -> String {
+        match self {
+            Self::RegisteredDomain(domain) => format!("domain:{}", domain.as_str()),
+            Self::Delegation(delegation) => format!(
+                "delegation:{}:{}",
+                delegation.domain.as_str(),
+                delegation.name.as_str()
+            ),
+            Self::Policy(_) => POLICY_RECORD_KEY.to_owned(),
+            Self::Projection(projection) => format!("projection:{}", projection.domain.as_str()),
+        }
+    }
+}
+
+impl EngineRecord for StoredStateRecord {
+    fn record_key(&self) -> RecordKey {
+        RecordKey::new(self.key_string())
     }
 }
 

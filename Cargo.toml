@@ -27,6 +27,7 @@ nota-text = ["signal-domain-criome/nota-text", "meta-signal-domain-criome/nota-t
 meta-signal-domain-criome = { git = "https://github.com/LiGoldragon/meta-signal-domain-criome.git", branch = "main", features = ["nota-text"] }
 nota-next                 = { git = "https://github.com/LiGoldragon/nota-next.git", branch = "main" }
 rkyv                       = { version = "0.8", default-features = false, features = ["std", "bytecheck", "little_endian", "pointer_width_32", "unaligned"] }
+sema-engine                = { git = "https://github.com/LiGoldragon/sema-engine.git", branch = "main" }
 signal-domain-criome       = { git = "https://github.com/LiGoldragon/signal-domain-criome.git", branch = "main", features = ["nota-text"] }
 signal-frame               = { git = "https://github.com/LiGoldragon/signal-frame.git", branch = "main", features = ["nota-text"] }
 thiserror                  = "2"

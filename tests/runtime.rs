@@ -273,6 +273,76 @@ fn daemon_process_accepts_meta_projection_and_answers_working_projection() {
 }
 
 #[test]
+fn daemon_process_recovers_meta_projection_after_restart() {
+    let directory = tempfile::tempdir().expect("temp dir");
+    let configuration_path = directory.path().join("domain-criome-daemon.rkyv");
+    let configuration = daemon_configuration(directory.path());
+
+    DomainCriomeDaemonConfigurationFile::new(&configuration_path)
+        .write_configuration(&configuration)
+        .expect("write domain-criome daemon configuration");
+
+    let mut child = Command::new(env!("CARGO_BIN_EXE_domain-criome-daemon"))
+        .arg(&configuration_path)
+        .spawn()
+        .expect("domain-criome-daemon starts");
+
+    wait_for_socket(Path::new(&configuration.ordinary_socket_path));
+    wait_for_socket(Path::new(&configuration.meta_socket_path));
+
+    let client = Client::with_sockets(
+        configuration.ordinary_socket_path.clone(),
+        configuration.meta_socket_path.clone(),
+    );
+    assert!(matches!(
+        client
+            .send_meta(register_domain_input("goldragon.criome"))
+            .expect("register domain"),
+        meta::Output::DomainRegistered(_)
+    ));
+    assert!(matches!(
+        client
+            .send_meta(set_policy_input("goldragon.criome"))
+            .expect("set policy"),
+        meta::Output::PolicySet(_)
+    ));
+    assert!(matches!(
+        client
+            .send_meta(set_projection_input("goldragon.criome", "203.0.113.20"))
+            .expect("set projection"),
+        meta::Output::ProjectionSet(_)
+    ));
+
+    stop_child(&mut child);
+    remove_socket(Path::new(&configuration.ordinary_socket_path));
+    remove_socket(Path::new(&configuration.meta_socket_path));
+
+    let mut restarted = Command::new(env!("CARGO_BIN_EXE_domain-criome-daemon"))
+        .arg(&configuration_path)
+        .spawn()
+        .expect("domain-criome-daemon restarts");
+
+    wait_for_socket(Path::new(&configuration.ordinary_socket_path));
+    wait_for_socket(Path::new(&configuration.meta_socket_path));
+
+    let client = Client::with_sockets(
+        configuration.ordinary_socket_path.clone(),
+        configuration.meta_socket_path.clone(),
+    );
+    let reply = client
+        .send_working(project_input("goldragon.criome"))
+        .expect("project persisted domain");
+
+    let ordinary::Output::Projected(projection) = reply else {
+        panic!("expected persisted projection");
+    };
+    let projection = projection.into_payload();
+    assert_eq!(projection.records[0].value.payload(), "203.0.113.20");
+
+    stop_child(&mut restarted);
+}
+
+#[test]
 fn command_line_dispatch_routes_working_and_meta_heads() {
     let working = DomainOperation::Project(ProjectionQuery {
         domain: DomainName::new("goldragon.criome"),
@@ -326,6 +396,7 @@ fn daemon_configuration(directory: &Path) -> DaemonConfiguration {
             .display()
             .to_string(),
         meta_socket_mode: 0o600,
+        database_path: directory.join("domain-criome.sema").display().to_string(),
     }
 }
 
@@ -343,4 +414,8 @@ fn wait_for_socket(socket: &Path) {
 fn stop_child(child: &mut Child) {
     let _ = child.kill();
     let _ = child.wait();
+}
+
+fn remove_socket(socket: &Path) {
+    let _ = std::fs::remove_file(socket);
 }
