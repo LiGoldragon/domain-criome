@@ -35,8 +35,8 @@ impl ComponentDaemon for DomainCriomeDaemon {
         Ok(Arc::new(Store::new()))
     }
 
-    fn handle_working_input(
-        engine: &Self::Engine,
+    async fn handle_working_input(
+        engine: &mut Self::Engine,
         input: Input,
         _connection: &ConnectionContext,
     ) -> Result<Output> {
@@ -44,7 +44,7 @@ impl ComponentDaemon for DomainCriomeDaemon {
     }
 
     async fn handle_meta_connection(
-        engine: &Self::Engine,
+        engine: &mut Self::Engine,
         mut connection: AcceptedConnection,
     ) -> Result<()> {
         let codec = LengthPrefixedCodec::new(MaximumFrameLength::new(MAXIMUM_REQUEST_FRAME_BYTES));

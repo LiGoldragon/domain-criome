@@ -48,6 +48,9 @@ pub enum Error {
     #[error("length-prefixed frame error: {0}")]
     LengthPrefixedFrame(#[from] triad_runtime::FrameError),
 
+    #[error("engine request error: {0}")]
+    EngineRequest(#[from] triad_runtime::EngineRequestError),
+
     #[error("ordinary schema frame error: {0}")]
     OrdinarySchemaFrame(ordinary_schema::SignalFrameError),
 
@@ -153,7 +156,7 @@ impl DaemonConfiguration {
     }
 }
 
-impl triad_runtime::DaemonConfiguration for DaemonConfiguration {
+impl triad_runtime::BindingSurface for DaemonConfiguration {
     fn socket_path(&self) -> &Path {
         Path::new(&self.ordinary_socket_path)
     }
@@ -303,9 +306,9 @@ impl Store {
             Some(operation) => {
                 SchemaOrdinaryOutput::new(self.handle_ordinary_operation(operation)).into_output()
             }
-            None => ordinary_schema::Output::Validated(ordinary_schema::ValidationReport::new(
-                Vec::new(),
-            )),
+            None => ordinary_schema::Output::Validated(
+                ordinary_schema::ValidationReport::new(Vec::new()).into(),
+            ),
         }
     }
 

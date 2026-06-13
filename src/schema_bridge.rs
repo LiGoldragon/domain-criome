@@ -24,15 +24,15 @@ impl SchemaOrdinaryInput {
 
     pub fn from_operation(operation: DomainOperation) -> Self {
         let input = match operation {
-            DomainOperation::Observe(observation) => {
-                ordinary_schema::Input::Observe(LegacyObservation::new(observation).into_schema())
-            }
-            DomainOperation::Resolve(query) => {
-                ordinary_schema::Input::Resolve(LegacyResolutionQuery::new(query).into_schema())
-            }
-            DomainOperation::Project(query) => {
-                ordinary_schema::Input::Project(LegacyProjectionQuery::new(query).into_schema())
-            }
+            DomainOperation::Observe(observation) => ordinary_schema::Input::Observe(
+                LegacyObservation::new(observation).into_schema().into(),
+            ),
+            DomainOperation::Resolve(query) => ordinary_schema::Input::Resolve(
+                LegacyResolutionQuery::new(query).into_schema().into(),
+            ),
+            DomainOperation::Project(query) => ordinary_schema::Input::Project(
+                LegacyProjectionQuery::new(query).into_schema().into(),
+            ),
         };
         Self { input }
     }
@@ -44,13 +44,13 @@ impl SchemaOrdinaryInput {
     pub fn into_operation(self) -> Option<DomainOperation> {
         match self.input {
             ordinary_schema::Input::Observe(observation) => Some(DomainOperation::Observe(
-                SchemaObservation::new(observation).into_legacy(),
+                SchemaObservation::new(observation.into_payload()).into_legacy(),
             )),
             ordinary_schema::Input::Resolve(query) => Some(DomainOperation::Resolve(
-                SchemaResolutionQuery::new(query).into_legacy(),
+                SchemaResolutionQuery::new(query.into_payload()).into_legacy(),
             )),
             ordinary_schema::Input::Project(query) => Some(DomainOperation::Project(
-                SchemaProjectionQuery::new(query).into_legacy(),
+                SchemaProjectionQuery::new(query.into_payload()).into_legacy(),
             )),
             ordinary_schema::Input::Validate(_) => None,
         }
@@ -69,16 +69,16 @@ impl SchemaOrdinaryOutput {
     pub fn into_output(self) -> ordinary_schema::Output {
         match self.reply {
             DomainReply::Observed(result) => ordinary_schema::Output::Observed(
-                LegacyObservationResult::new(result).into_schema(),
+                LegacyObservationResult::new(result).into_schema().into(),
             ),
-            DomainReply::Resolved(result) => {
-                ordinary_schema::Output::Resolved(LegacyResolutionResult::new(result).into_schema())
-            }
-            DomainReply::Projected(projection) => {
-                ordinary_schema::Output::Projected(LegacyProjection::new(projection).into_schema())
-            }
+            DomainReply::Resolved(result) => ordinary_schema::Output::Resolved(
+                LegacyResolutionResult::new(result).into_schema().into(),
+            ),
+            DomainReply::Projected(projection) => ordinary_schema::Output::Projected(
+                LegacyProjection::new(projection).into_schema().into(),
+            ),
             DomainReply::RequestRejected(rejection) => ordinary_schema::Output::RequestRejected(
-                LegacyDomainRejection::new(rejection).into_schema(),
+                LegacyDomainRejection::new(rejection).into_schema().into(),
             ),
         }
     }
@@ -96,19 +96,22 @@ impl SchemaMetaInput {
     pub fn from_operation(operation: MetaOperation) -> Self {
         let input = match operation {
             MetaOperation::RegisterDomain(registration) => meta_schema::Input::RegisterDomain(
-                meta_schema::Registration::new(registration.domain.as_str().to_owned()),
+                meta_schema::Registration::new(registration.domain.as_str().to_owned().into())
+                    .into(),
             ),
-            MetaOperation::Delegate(delegation) => {
-                meta_schema::Input::Delegate(LegacyMetaDelegation::new(delegation).into_schema())
-            }
+            MetaOperation::Delegate(delegation) => meta_schema::Input::Delegate(
+                LegacyMetaDelegation::new(delegation).into_schema().into(),
+            ),
             MetaOperation::RetireDomain(retirement) => meta_schema::Input::RetireDomain(
-                meta_schema::Retirement::new(retirement.domain.as_str().to_owned()),
+                meta_schema::Retirement::new(retirement.domain.as_str().to_owned().into()).into(),
             ),
             MetaOperation::SetPolicy(policy) => {
-                meta_schema::Input::SetPolicy(LegacyPolicy::new(policy).into_schema())
+                meta_schema::Input::SetPolicy(LegacyPolicy::new(policy).into_schema().into())
             }
             MetaOperation::SetProjection(declaration) => meta_schema::Input::SetProjection(
-                LegacyProjectionDeclaration::new(declaration).into_schema(),
+                LegacyProjectionDeclaration::new(declaration)
+                    .into_schema()
+                    .into(),
             ),
         };
         Self { input }
@@ -122,22 +125,26 @@ impl SchemaMetaInput {
         match self.input {
             meta_schema::Input::RegisterDomain(registration) => {
                 MetaOperation::RegisterDomain(Registration {
-                    domain: DomainName::new(registration.into_payload()),
+                    domain: DomainName::new(
+                        registration.into_payload().into_payload().into_payload(),
+                    ),
                 })
             }
-            meta_schema::Input::Delegate(delegation) => {
-                MetaOperation::Delegate(SchemaMetaDelegation::new(delegation).into_legacy())
-            }
+            meta_schema::Input::Delegate(delegation) => MetaOperation::Delegate(
+                SchemaMetaDelegation::new(delegation.into_payload()).into_legacy(),
+            ),
             meta_schema::Input::RetireDomain(retirement) => {
                 MetaOperation::RetireDomain(Retirement {
-                    domain: DomainName::new(retirement.into_payload()),
+                    domain: DomainName::new(
+                        retirement.into_payload().into_payload().into_payload(),
+                    ),
                 })
             }
             meta_schema::Input::SetPolicy(policy) => {
-                MetaOperation::SetPolicy(SchemaPolicy::new(policy).into_legacy())
+                MetaOperation::SetPolicy(SchemaPolicy::new(policy.into_payload()).into_legacy())
             }
             meta_schema::Input::SetProjection(declaration) => MetaOperation::SetProjection(
-                SchemaProjectionDeclaration::new(declaration).into_legacy(),
+                SchemaProjectionDeclaration::new(declaration.into_payload()).into_legacy(),
             ),
         }
     }
@@ -155,29 +162,32 @@ impl SchemaMetaOutput {
     pub fn into_output(self) -> meta_schema::Output {
         match self.reply {
             MetaReply::DomainRegistered(registered) => meta_schema::Output::DomainRegistered(
-                meta_schema::DomainRegistered::new(registered.domain.as_str().to_owned()),
+                meta_schema::DomainRegistered::new(registered.domain.as_str().to_owned().into())
+                    .into(),
             ),
-            MetaReply::DomainDelegated(delegated) => {
-                meta_schema::Output::DelegationSet(meta_schema::DelegationSet {
-                    delegation_name: delegated.name.as_str().to_owned(),
-                    domain: delegated.domain.as_str().to_owned(),
-                })
-            }
+            MetaReply::DomainDelegated(delegated) => meta_schema::Output::DelegationSet(
+                meta_schema::DelegationSet {
+                    delegation_name: delegated.name.as_str().to_owned().into(),
+                    domain: delegated.domain.as_str().to_owned().into(),
+                }
+                .into(),
+            ),
             MetaReply::DomainRetired(retired) => meta_schema::Output::DomainRetired(
-                meta_schema::DomainRetired::new(retired.domain.as_str().to_owned()),
+                meta_schema::DomainRetired::new(retired.domain.as_str().to_owned().into()).into(),
             ),
             MetaReply::PolicySet(policy) => meta_schema::Output::PolicySet(
-                meta_schema::PolicySet::new(policy.projection_policy_count),
+                meta_schema::PolicySet::new(policy.projection_policy_count).into(),
             ),
-            MetaReply::ProjectionSet(projection) => {
-                meta_schema::Output::ProjectionSet(meta_schema::ProjectionSet {
-                    domain: projection.domain.as_str().to_owned(),
+            MetaReply::ProjectionSet(projection) => meta_schema::Output::ProjectionSet(
+                meta_schema::ProjectionSet {
+                    domain: projection.domain.as_str().to_owned().into(),
                     record_count: projection.record_count,
                     redirect_count: projection.redirect_count,
-                })
-            }
+                }
+                .into(),
+            ),
             MetaReply::RequestRejected(rejection) => meta_schema::Output::RequestRejected(
-                LegacyMetaRejection::new(rejection).into_schema(),
+                LegacyMetaRejection::new(rejection).into_schema().into(),
             ),
         }
     }
@@ -195,14 +205,14 @@ impl SchemaObservation {
     pub fn into_legacy(self) -> Observation {
         match self.observation {
             ordinary_schema::Observation::Domains(query) => {
-                Observation::Domains(SchemaDomainQuery::new(query).into_legacy())
+                Observation::Domains(SchemaDomainQuery::new(query.into_payload()).into_legacy())
             }
-            ordinary_schema::Observation::Delegations(query) => {
-                Observation::Delegations(SchemaDelegationQuery::new(query).into_legacy())
-            }
-            ordinary_schema::Observation::Projection(query) => {
-                Observation::Projection(SchemaProjectionQuery::new(query).into_legacy())
-            }
+            ordinary_schema::Observation::Delegations(query) => Observation::Delegations(
+                SchemaDelegationQuery::new(query.into_payload()).into_legacy(),
+            ),
+            ordinary_schema::Observation::Projection(query) => Observation::Projection(
+                SchemaProjectionQuery::new(query.into_payload()).into_legacy(),
+            ),
         }
     }
 }
@@ -218,14 +228,14 @@ impl LegacyObservation {
 
     pub fn into_schema(self) -> ordinary_schema::Observation {
         match self.observation {
-            Observation::Domains(query) => {
-                ordinary_schema::Observation::Domains(LegacyDomainQuery::new(query).into_schema())
-            }
+            Observation::Domains(query) => ordinary_schema::Observation::Domains(
+                LegacyDomainQuery::new(query).into_schema().into(),
+            ),
             Observation::Delegations(query) => ordinary_schema::Observation::Delegations(
-                LegacyDelegationQuery::new(query).into_schema(),
+                LegacyDelegationQuery::new(query).into_schema().into(),
             ),
             Observation::Projection(query) => ordinary_schema::Observation::Projection(
-                LegacyProjectionQuery::new(query).into_schema(),
+                LegacyProjectionQuery::new(query).into_schema().into(),
             ),
         }
     }
@@ -242,7 +252,10 @@ impl SchemaDomainQuery {
 
     pub fn into_legacy(self) -> DomainQuery {
         DomainQuery {
-            root: self.query.into_payload().map(DomainName::new),
+            root: self
+                .query
+                .into_payload()
+                .map(|domain| DomainName::new(domain.into_payload())),
         }
     }
 }
@@ -257,7 +270,11 @@ impl LegacyDomainQuery {
     }
 
     pub fn into_schema(self) -> ordinary_schema::DomainQuery {
-        ordinary_schema::DomainQuery::new(self.query.root.map(|domain| domain.as_str().to_owned()))
+        ordinary_schema::DomainQuery::new(
+            self.query
+                .root
+                .map(|domain| domain.as_str().to_owned().into()),
+        )
     }
 }
 
@@ -272,7 +289,10 @@ impl SchemaDelegationQuery {
 
     pub fn into_legacy(self) -> DelegationQuery {
         DelegationQuery {
-            domain: self.query.into_payload().map(DomainName::new),
+            domain: self
+                .query
+                .into_payload()
+                .map(|domain| DomainName::new(domain.into_payload())),
         }
     }
 }
@@ -288,7 +308,9 @@ impl LegacyDelegationQuery {
 
     pub fn into_schema(self) -> ordinary_schema::DelegationQuery {
         ordinary_schema::DelegationQuery::new(
-            self.query.domain.map(|domain| domain.as_str().to_owned()),
+            self.query
+                .domain
+                .map(|domain| domain.as_str().to_owned().into()),
         )
     }
 }
@@ -304,7 +326,7 @@ impl SchemaResolutionQuery {
 
     pub fn into_legacy(self) -> ResolutionQuery {
         ResolutionQuery {
-            name: DomainName::new(self.query.name),
+            name: DomainName::new(self.query.name.into_payload()),
             scope: SchemaResolutionScope::new(self.query.resolution_scope).into_legacy(),
         }
     }
@@ -321,7 +343,7 @@ impl LegacyResolutionQuery {
 
     pub fn into_schema(self) -> ordinary_schema::ResolutionQuery {
         ordinary_schema::ResolutionQuery {
-            name: self.query.name.as_str().to_owned(),
+            name: self.query.name.as_str().to_owned().into(),
             resolution_scope: LegacyResolutionScope::new(self.query.scope).into_schema(),
         }
     }
@@ -338,7 +360,7 @@ impl SchemaProjectionQuery {
 
     pub fn into_legacy(self) -> ProjectionQuery {
         ProjectionQuery {
-            domain: DomainName::new(self.query.domain),
+            domain: DomainName::new(self.query.domain.into_payload()),
             scope: SchemaProjectionScope::new(self.query.projection_scope).into_legacy(),
         }
     }
@@ -355,7 +377,7 @@ impl LegacyProjectionQuery {
 
     pub fn into_schema(self) -> ordinary_schema::ProjectionQuery {
         ordinary_schema::ProjectionQuery {
-            domain: self.query.domain.as_str().to_owned(),
+            domain: self.query.domain.as_str().to_owned().into(),
             projection_scope: LegacyProjectionScope::new(self.query.scope).into_schema(),
         }
     }
@@ -513,7 +535,7 @@ impl LegacyDomainListing {
             self.listing
                 .domains
                 .into_iter()
-                .map(|domain| domain.as_str().to_owned())
+                .map(|domain| domain.as_str().to_owned().into())
                 .collect(),
         )
     }
@@ -550,9 +572,9 @@ impl LegacyDelegation {
 
     pub fn into_schema(self) -> ordinary_schema::Delegation {
         ordinary_schema::Delegation {
-            delegation_name: self.delegation.name.as_str().to_owned(),
-            domain_name: self.delegation.domain.as_str().to_owned(),
-            delegation_target: self.delegation.target.as_str().to_owned(),
+            delegation_name: self.delegation.name.as_str().to_owned().into(),
+            domain_name: self.delegation.domain.as_str().to_owned().into(),
+            delegation_target: self.delegation.target.as_str().to_owned().into(),
         }
     }
 }
@@ -574,8 +596,8 @@ impl LegacyResolutionResult {
                 .addresses
                 .into_iter()
                 .map(|address| ordinary_schema::Address {
-                    name: address.name.as_str().to_owned(),
-                    address: address.address.as_str().to_owned(),
+                    name: address.name.as_str().to_owned().into(),
+                    address: address.address.as_str().to_owned().into(),
                 })
                 .collect(),
         }
@@ -621,17 +643,17 @@ impl LegacyRecord {
 
     pub fn into_schema(self) -> ordinary_schema::DomainNameSystemRecord {
         ordinary_schema::DomainNameSystemRecord {
-            name: self.record.name.as_str().to_owned(),
+            name: self.record.name.as_str().to_owned().into(),
             record_kind: LegacyRecordKind::new(self.record.kind).into_schema(),
-            value: self.record.value.as_str().to_owned(),
+            value: self.record.value.as_str().to_owned().into(),
         }
     }
 
     pub fn into_meta_schema(self) -> meta_schema::DomainNameSystemRecord {
         meta_schema::DomainNameSystemRecord {
-            name: self.record.name.as_str().to_owned(),
+            name: self.record.name.as_str().to_owned().into(),
             record_kind: LegacyRecordKind::new(self.record.kind).into_meta_schema(),
-            value: self.record.value.as_str().to_owned(),
+            value: self.record.value.as_str().to_owned().into(),
         }
     }
 }
@@ -647,9 +669,9 @@ impl SchemaMetaRecord {
 
     pub fn into_legacy(self) -> DomainNameSystemRecord {
         DomainNameSystemRecord {
-            name: DomainName::new(self.record.name),
+            name: DomainName::new(self.record.name.into_payload()),
             kind: MetaSchemaRecordKind::new(self.record.record_kind).into_legacy(),
-            value: signal_domain_criome::RecordValue::new(self.record.value),
+            value: signal_domain_criome::RecordValue::new(self.record.value.into_payload()),
         }
     }
 }
@@ -712,8 +734,8 @@ impl LegacyRedirect {
 
     pub fn into_schema(self) -> ordinary_schema::RedirectRule {
         ordinary_schema::RedirectRule {
-            source: self.redirect.source.as_str().to_owned(),
-            target: self.redirect.target.as_str().to_owned(),
+            source: self.redirect.source.as_str().to_owned().into(),
+            target: self.redirect.target.as_str().to_owned().into(),
             redirect_status: LegacyRedirectStatus::new(self.redirect.status).into_schema(),
             path_treatment: LegacyPathTreatment::new(self.redirect.path_treatment).into_schema(),
         }
@@ -721,8 +743,8 @@ impl LegacyRedirect {
 
     pub fn into_meta_schema(self) -> meta_schema::RedirectRule {
         meta_schema::RedirectRule {
-            source: self.redirect.source.as_str().to_owned(),
-            target: self.redirect.target.as_str().to_owned(),
+            source: self.redirect.source.as_str().to_owned().into(),
+            target: self.redirect.target.as_str().to_owned().into(),
             redirect_status: LegacyRedirectStatus::new(self.redirect.status).into_meta_schema(),
             path_treatment: LegacyPathTreatment::new(self.redirect.path_treatment)
                 .into_meta_schema(),
@@ -741,8 +763,10 @@ impl SchemaMetaRedirect {
 
     pub fn into_legacy(self) -> RedirectRule {
         RedirectRule {
-            source: DomainName::new(self.redirect.source),
-            target: signal_domain_criome::UniformResourceLocator::new(self.redirect.target),
+            source: DomainName::new(self.redirect.source.into_payload()),
+            target: signal_domain_criome::UniformResourceLocator::new(
+                self.redirect.target.into_payload(),
+            ),
             status: MetaSchemaRedirectStatus::new(self.redirect.redirect_status).into_legacy(),
             path_treatment: MetaSchemaPathTreatment::new(self.redirect.path_treatment)
                 .into_legacy(),
@@ -916,9 +940,9 @@ impl LegacyMetaDelegation {
 
     pub fn into_schema(self) -> meta_schema::Delegation {
         meta_schema::Delegation {
-            delegation_name: self.delegation.name.as_str().to_owned(),
-            domain: self.delegation.domain.as_str().to_owned(),
-            delegation_target: self.delegation.target.as_str().to_owned(),
+            delegation_name: self.delegation.name.as_str().to_owned().into(),
+            domain: self.delegation.domain.as_str().to_owned().into(),
+            delegation_target: self.delegation.target.as_str().to_owned().into(),
         }
     }
 }
@@ -934,9 +958,13 @@ impl SchemaMetaDelegation {
 
     pub fn into_legacy(self) -> MetaDelegation {
         MetaDelegation {
-            name: signal_domain_criome::DelegationName::new(self.delegation.delegation_name),
-            domain: DomainName::new(self.delegation.domain),
-            target: signal_domain_criome::DelegationTarget::new(self.delegation.delegation_target),
+            name: signal_domain_criome::DelegationName::new(
+                self.delegation.delegation_name.into_payload(),
+            ),
+            domain: DomainName::new(self.delegation.domain.into_payload()),
+            target: signal_domain_criome::DelegationTarget::new(
+                self.delegation.delegation_target.into_payload(),
+            ),
         }
     }
 }
@@ -956,7 +984,7 @@ impl LegacyPolicy {
                 .projections
                 .into_iter()
                 .map(|policy| meta_schema::ProjectionPolicy {
-                    domain: policy.domain.as_str().to_owned(),
+                    domain: policy.domain.as_str().to_owned().into(),
                     projection_scope: LegacyProjectionScope::new(policy.scope).into_meta_schema(),
                     projection_directive: LegacyProjectionDirective::new(policy.directive)
                         .into_schema(),
@@ -982,7 +1010,7 @@ impl SchemaPolicy {
                 .into_payload()
                 .into_iter()
                 .map(|policy| ProjectionPolicy {
-                    domain: DomainName::new(policy.domain),
+                    domain: DomainName::new(policy.domain.into_payload()),
                     scope: MetaSchemaProjectionScope::new(policy.projection_scope).into_legacy(),
                     directive: SchemaProjectionDirective::new(policy.projection_directive)
                         .into_legacy(),
@@ -1037,7 +1065,7 @@ impl LegacyProjectionDeclaration {
 
     pub fn into_schema(self) -> meta_schema::ProjectionDeclaration {
         meta_schema::ProjectionDeclaration {
-            domain: self.declaration.domain.as_str().to_owned(),
+            domain: self.declaration.domain.as_str().to_owned().into(),
             records: self
                 .declaration
                 .records
@@ -1065,7 +1093,7 @@ impl SchemaProjectionDeclaration {
 
     pub fn into_legacy(self) -> ProjectionDeclaration {
         ProjectionDeclaration {
-            domain: DomainName::new(self.declaration.domain),
+            domain: DomainName::new(self.declaration.domain.into_payload()),
             records: self
                 .declaration
                 .records

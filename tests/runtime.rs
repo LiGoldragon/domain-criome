@@ -21,31 +21,81 @@ fn encode_to_text(value: &impl NotaEncode) -> String {
     value.to_nota()
 }
 
-fn configure_projection(store: &Store) {
-    let register = store.handle_meta_input(meta::Input::RegisterDomain(meta::Registration::new(
-        "goldragon.criome".to_owned(),
-    )));
-    assert!(matches!(register, meta::Output::DomainRegistered(_)));
+fn meta_domain(value: &str) -> meta::Domain {
+    value.to_owned().into()
+}
 
-    let policy = store.handle_meta_input(meta::Input::SetPolicy(meta::Policy::new(vec![
-        meta::ProjectionPolicy {
-            domain: "goldragon.criome".to_owned(),
+fn meta_domain_name(value: &str) -> meta::DomainName {
+    value.to_owned().into()
+}
+
+fn meta_record_value(value: &str) -> meta::RecordValue {
+    value.to_owned().into()
+}
+
+fn ordinary_domain_name(value: &str) -> ordinary::DomainName {
+    value.to_owned().into()
+}
+
+fn register_domain_input(domain: &str) -> meta::Input {
+    meta::Input::RegisterDomain(meta::Registration::new(meta_domain(domain)).into())
+}
+
+fn set_policy_input(domain: &str) -> meta::Input {
+    meta::Input::SetPolicy(
+        meta::Policy::new(vec![meta::ProjectionPolicy {
+            domain: meta_domain(domain),
             projection_scope: meta::ProjectionScope::Everything,
             projection_directive: meta::ProjectionDirective::Enable,
-        },
-    ])));
+        }])
+        .into(),
+    )
+}
+
+fn set_projection_input(domain: &str, address: &str) -> meta::Input {
+    meta::Input::SetProjection(
+        meta::ProjectionDeclaration {
+            domain: meta_domain(domain),
+            records: vec![meta::DomainNameSystemRecord {
+                name: meta_domain_name(domain),
+                record_kind: meta::RecordKind::AddressV4,
+                value: meta_record_value(address),
+            }],
+            redirects: vec![],
+        }
+        .into(),
+    )
+}
+
+fn project_input(domain: &str) -> ordinary::Input {
+    ordinary::Input::Project(
+        ordinary::ProjectionQuery {
+            domain: ordinary_domain_name(domain),
+            projection_scope: ordinary::ProjectionScope::PublicRecords,
+        }
+        .into(),
+    )
+}
+
+fn resolve_input(name: &str) -> ordinary::Input {
+    ordinary::Input::Resolve(
+        ordinary::ResolutionQuery {
+            name: ordinary_domain_name(name),
+            resolution_scope: ordinary::ResolutionScope::Public,
+        }
+        .into(),
+    )
+}
+
+fn configure_projection(store: &Store) {
+    let register = store.handle_meta_input(register_domain_input("goldragon.criome"));
+    assert!(matches!(register, meta::Output::DomainRegistered(_)));
+
+    let policy = store.handle_meta_input(set_policy_input("goldragon.criome"));
     assert!(matches!(policy, meta::Output::PolicySet(_)));
 
     let projection =
-        store.handle_meta_input(meta::Input::SetProjection(meta::ProjectionDeclaration {
-            domain: "goldragon.criome".to_owned(),
-            records: vec![meta::DomainNameSystemRecord {
-                name: "goldragon.criome".to_owned(),
-                record_kind: meta::RecordKind::AddressV4,
-                value: "203.0.113.10".to_owned(),
-            }],
-            redirects: vec![],
-        }));
+        store.handle_meta_input(set_projection_input("goldragon.criome", "203.0.113.10"));
     assert!(matches!(projection, meta::Output::ProjectionSet(_)));
 }
 
@@ -54,24 +104,20 @@ fn meta_policy_enables_provider_neutral_projection_and_resolution() {
     let store = Store::new();
     configure_projection(&store);
 
-    let reply = store.handle_ordinary_input(ordinary::Input::Project(ordinary::ProjectionQuery {
-        domain: "goldragon.criome".to_owned(),
-        projection_scope: ordinary::ProjectionScope::PublicRecords,
-    }));
+    let reply = store.handle_ordinary_input(project_input("goldragon.criome"));
     let ordinary::Output::Projected(projection) = reply else {
         panic!("expected projection");
     };
+    let projection = projection.into_payload();
     assert_eq!(projection.records.len(), 1);
-    assert_eq!(projection.records[0].value, "203.0.113.10");
+    assert_eq!(projection.records[0].value.payload(), "203.0.113.10");
 
-    let reply = store.handle_ordinary_input(ordinary::Input::Resolve(ordinary::ResolutionQuery {
-        name: "goldragon.criome".to_owned(),
-        resolution_scope: ordinary::ResolutionScope::Public,
-    }));
+    let reply = store.handle_ordinary_input(resolve_input("goldragon.criome"));
     let ordinary::Output::Resolved(resolution) = reply else {
         panic!("expected resolution");
     };
-    assert_eq!(resolution.addresses[0].address, "203.0.113.10");
+    let resolution = resolution.into_payload();
+    assert_eq!(resolution.addresses[0].address.payload(), "203.0.113.10");
 }
 
 #[test]
@@ -79,15 +125,25 @@ fn schema_observe_domains_carries_query_payload() {
     let store = Store::new();
     configure_projection(&store);
 
-    let reply =
-        store.handle_ordinary_input(ordinary::Input::Observe(ordinary::Observation::Domains(
-            ordinary::DomainQuery::new(Some("goldragon.criome".to_owned())),
-        )));
+    let reply = store.handle_ordinary_input(ordinary::Input::Observe(
+        ordinary::Observation::Domains(
+            ordinary::DomainQuery::new(Some(ordinary_domain_name("goldragon.criome"))).into(),
+        )
+        .into(),
+    ));
 
-    let ordinary::Output::Observed(ordinary::ObservationResult::Domains(domains)) = reply else {
+    let ordinary::Output::Observed(observed) = reply else {
         panic!("expected domain observation");
     };
-    assert_eq!(domains.into_payload(), vec!["goldragon.criome".to_owned()]);
+    let ordinary::ObservationResult::Domains(domains) = observed.into_payload() else {
+        panic!("expected domain list");
+    };
+    let domains = domains
+        .into_payload()
+        .into_iter()
+        .map(|domain| domain.into_payload())
+        .collect::<Vec<_>>();
+    assert_eq!(domains, vec!["goldragon.criome".to_owned()]);
 }
 
 #[test]
@@ -148,14 +204,12 @@ fn daemon_process_starts_from_binary_configuration_and_rejects_unknown_resolutio
         configuration.meta_socket_path.clone(),
     );
     let reply = client
-        .send_working(ordinary::Input::Resolve(ordinary::ResolutionQuery {
-            name: "unknown.criome".to_owned(),
-            resolution_scope: ordinary::ResolutionScope::Public,
-        }))
+        .send_working(resolve_input("unknown.criome"))
         .expect("working request succeeds");
 
     match reply {
         ordinary::Output::RequestRejected(rejection) => {
+            let rejection = rejection.into_payload();
             assert_eq!(rejection.reason, ordinary::RejectionReason::DomainUnknown);
         }
         other => panic!("expected domain-unknown rejection, got {other:?}"),
@@ -188,50 +242,32 @@ fn daemon_process_accepts_meta_projection_and_answers_working_projection() {
     );
     assert!(matches!(
         client
-            .send_meta(meta::Input::RegisterDomain(meta::Registration::new(
-                "goldragon.criome".to_owned(),
-            )))
+            .send_meta(register_domain_input("goldragon.criome"))
             .expect("register domain"),
         meta::Output::DomainRegistered(_)
     ));
     assert!(matches!(
         client
-            .send_meta(meta::Input::SetPolicy(meta::Policy::new(vec![
-                meta::ProjectionPolicy {
-                    domain: "goldragon.criome".to_owned(),
-                    projection_scope: meta::ProjectionScope::Everything,
-                    projection_directive: meta::ProjectionDirective::Enable,
-                },
-            ])))
+            .send_meta(set_policy_input("goldragon.criome"))
             .expect("set policy"),
         meta::Output::PolicySet(_)
     ));
     assert!(matches!(
         client
-            .send_meta(meta::Input::SetProjection(meta::ProjectionDeclaration {
-                domain: "goldragon.criome".to_owned(),
-                records: vec![meta::DomainNameSystemRecord {
-                    name: "goldragon.criome".to_owned(),
-                    record_kind: meta::RecordKind::AddressV4,
-                    value: "203.0.113.10".to_owned(),
-                }],
-                redirects: vec![],
-            }))
+            .send_meta(set_projection_input("goldragon.criome", "203.0.113.10"))
             .expect("set projection"),
         meta::Output::ProjectionSet(_)
     ));
 
     let reply = client
-        .send_working(ordinary::Input::Project(ordinary::ProjectionQuery {
-            domain: "goldragon.criome".to_owned(),
-            projection_scope: ordinary::ProjectionScope::PublicRecords,
-        }))
+        .send_working(project_input("goldragon.criome"))
         .expect("project domain");
 
     let ordinary::Output::Projected(projection) = reply else {
         panic!("expected projection");
     };
-    assert_eq!(projection.records[0].value, "203.0.113.10");
+    let projection = projection.into_payload();
+    assert_eq!(projection.records[0].value.payload(), "203.0.113.10");
 
     stop_child(&mut child);
 }
