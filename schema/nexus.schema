@@ -14,8 +14,13 @@
   SemaWriteInput domain-criome:sema:WriteInput
   SemaWriteOutput domain-criome:sema:WriteOutput
 }
-[SignalArrived SemaReadCompleted SemaWriteCompleted]
-[CommandSemaRead CommandSemaWrite ReplyToSignal Continue]
+[(SignalArrived SignalArrived)
+ (SemaReadCompleted SemaReadOutput)
+ (SemaWriteCompleted SemaWriteOutput)]
+[(CommandSemaRead SemaReadInput)
+ (CommandSemaWrite SemaWriteInput)
+ (ReplyToSignal SignalOutput)
+ (Continue NexusInput)]
 {
   SignalArrived SignalInput
   SemaReadCompleted SemaReadOutput

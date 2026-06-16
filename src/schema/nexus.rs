@@ -105,18 +105,18 @@ pub enum NexusOutput {
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum Input {
     SignalArrived(SignalArrived),
-    SemaReadCompleted(SemaReadCompleted),
-    SemaWriteCompleted(SemaWriteCompleted),
+    SemaReadCompleted(SemaReadOutput),
+    SemaWriteCompleted(SemaWriteOutput),
 }
 
 #[rustfmt::skip]
 #[cfg_attr(feature = "nota-text", derive(nota_next::NotaDecode, nota_next::NotaEncode))]
 #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum Output {
-    CommandSemaRead(CommandSemaRead),
-    CommandSemaWrite(CommandSemaWrite),
-    ReplyToSignal(ReplyToSignal),
-    Continue(Continue),
+    CommandSemaRead(SemaReadInput),
+    CommandSemaWrite(SemaWriteInput),
+    ReplyToSignal(SignalOutput),
+    Continue(NexusInput),
 }
 
 #[rustfmt::skip]
@@ -307,26 +307,26 @@ impl Input {
         Self::SignalArrived(SignalArrived::new(payload))
     }
     pub fn sema_read_completed(payload: SemaReadOutput) -> Self {
-        Self::SemaReadCompleted(SemaReadCompleted::new(payload))
+        Self::SemaReadCompleted(payload)
     }
     pub fn sema_write_completed(payload: SemaWriteOutput) -> Self {
-        Self::SemaWriteCompleted(SemaWriteCompleted::new(payload))
+        Self::SemaWriteCompleted(payload)
     }
 }
 
 #[rustfmt::skip]
 impl Output {
     pub fn command_sema_read(payload: SemaReadInput) -> Self {
-        Self::CommandSemaRead(CommandSemaRead::new(payload))
+        Self::CommandSemaRead(payload)
     }
     pub fn command_sema_write(payload: SemaWriteInput) -> Self {
-        Self::CommandSemaWrite(CommandSemaWrite::new(payload))
+        Self::CommandSemaWrite(payload)
     }
     pub fn reply_to_signal(payload: SignalOutput) -> Self {
-        Self::ReplyToSignal(ReplyToSignal::new(payload))
+        Self::ReplyToSignal(payload)
     }
     pub fn r#continue(payload: NexusInput) -> Self {
-        Self::Continue(Continue::new(payload))
+        Self::Continue(payload)
     }
 }
 
@@ -415,43 +415,43 @@ impl From<SignalArrived> for Input {
 }
 
 #[rustfmt::skip]
-impl From<SemaReadCompleted> for Input {
-    fn from(payload: SemaReadCompleted) -> Self {
+impl From<SemaReadOutput> for Input {
+    fn from(payload: SemaReadOutput) -> Self {
         Self::SemaReadCompleted(payload)
     }
 }
 
 #[rustfmt::skip]
-impl From<SemaWriteCompleted> for Input {
-    fn from(payload: SemaWriteCompleted) -> Self {
+impl From<SemaWriteOutput> for Input {
+    fn from(payload: SemaWriteOutput) -> Self {
         Self::SemaWriteCompleted(payload)
     }
 }
 
 #[rustfmt::skip]
-impl From<CommandSemaRead> for Output {
-    fn from(payload: CommandSemaRead) -> Self {
+impl From<SemaReadInput> for Output {
+    fn from(payload: SemaReadInput) -> Self {
         Self::CommandSemaRead(payload)
     }
 }
 
 #[rustfmt::skip]
-impl From<CommandSemaWrite> for Output {
-    fn from(payload: CommandSemaWrite) -> Self {
+impl From<SemaWriteInput> for Output {
+    fn from(payload: SemaWriteInput) -> Self {
         Self::CommandSemaWrite(payload)
     }
 }
 
 #[rustfmt::skip]
-impl From<ReplyToSignal> for Output {
-    fn from(payload: ReplyToSignal) -> Self {
+impl From<SignalOutput> for Output {
+    fn from(payload: SignalOutput) -> Self {
         Self::ReplyToSignal(payload)
     }
 }
 
 #[rustfmt::skip]
-impl From<Continue> for Output {
-    fn from(payload: Continue) -> Self {
+impl From<NexusInput> for Output {
+    fn from(payload: NexusInput) -> Self {
         Self::Continue(payload)
     }
 }

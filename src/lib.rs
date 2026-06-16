@@ -330,9 +330,9 @@ impl Store {
             Some(operation) => {
                 SchemaOrdinaryOutput::new(self.handle_ordinary_operation(operation)).into_output()
             }
-            None => ordinary_schema::Output::Validated(
-                ordinary_schema::ValidationReport::new(Vec::new()).into(),
-            ),
+            None => ordinary_schema::Output::Validated(ordinary_schema::ValidationReport::new(
+                Vec::new(),
+            )),
         }
     }
 

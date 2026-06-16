@@ -38,53 +38,41 @@ fn ordinary_domain_name(value: &str) -> ordinary::DomainName {
 }
 
 fn register_domain_input(domain: &str) -> meta::Input {
-    meta::Input::RegisterDomain(meta::Registration::new(meta_domain(domain)).into())
+    meta::Input::RegisterDomain(meta::Registration::new(meta_domain(domain)))
 }
 
 fn set_policy_input(domain: &str) -> meta::Input {
-    meta::Input::SetPolicy(
-        meta::Policy::new(vec![meta::ProjectionPolicy {
-            domain: meta_domain(domain),
-            projection_scope: meta::ProjectionScope::Everything,
-            projection_directive: meta::ProjectionDirective::Enable,
-        }])
-        .into(),
-    )
+    meta::Input::SetPolicy(meta::Policy::new(vec![meta::ProjectionPolicy {
+        domain: meta_domain(domain),
+        projection_scope: meta::ProjectionScope::Everything,
+        projection_directive: meta::ProjectionDirective::Enable,
+    }]))
 }
 
 fn set_projection_input(domain: &str, address: &str) -> meta::Input {
-    meta::Input::SetProjection(
-        meta::ProjectionDeclaration {
-            domain: meta_domain(domain),
-            records: vec![meta::DomainNameSystemRecord {
-                name: meta_domain_name(domain),
-                record_kind: meta::RecordKind::AddressV4,
-                value: meta_record_value(address),
-            }],
-            redirects: vec![],
-        }
-        .into(),
-    )
+    meta::Input::SetProjection(meta::ProjectionDeclaration {
+        domain: meta_domain(domain),
+        records: vec![meta::DomainNameSystemRecord {
+            name: meta_domain_name(domain),
+            record_kind: meta::RecordKind::AddressV4,
+            value: meta_record_value(address),
+        }],
+        redirects: vec![],
+    })
 }
 
 fn project_input(domain: &str) -> ordinary::Input {
-    ordinary::Input::Project(
-        ordinary::ProjectionQuery {
-            domain: ordinary_domain_name(domain),
-            projection_scope: ordinary::ProjectionScope::PublicRecords,
-        }
-        .into(),
-    )
+    ordinary::Input::Project(ordinary::ProjectionQuery {
+        domain: ordinary_domain_name(domain),
+        projection_scope: ordinary::ProjectionScope::PublicRecords,
+    })
 }
 
 fn resolve_input(name: &str) -> ordinary::Input {
-    ordinary::Input::Resolve(
-        ordinary::ResolutionQuery {
-            name: ordinary_domain_name(name),
-            resolution_scope: ordinary::ResolutionScope::Public,
-        }
-        .into(),
-    )
+    ordinary::Input::Resolve(ordinary::ResolutionQuery {
+        name: ordinary_domain_name(name),
+        resolution_scope: ordinary::ResolutionScope::Public,
+    })
 }
 
 fn configure_projection(store: &Store) {
@@ -108,7 +96,6 @@ fn meta_policy_enables_provider_neutral_projection_and_resolution() {
     let ordinary::Output::Projected(projection) = reply else {
         panic!("expected projection");
     };
-    let projection = projection.into_payload();
     assert_eq!(projection.records.len(), 1);
     assert_eq!(projection.records[0].value.payload(), "203.0.113.10");
 
@@ -116,7 +103,6 @@ fn meta_policy_enables_provider_neutral_projection_and_resolution() {
     let ordinary::Output::Resolved(resolution) = reply else {
         panic!("expected resolution");
     };
-    let resolution = resolution.into_payload();
     assert_eq!(resolution.addresses[0].address.payload(), "203.0.113.10");
 }
 
@@ -125,17 +111,15 @@ fn schema_observe_domains_carries_query_payload() {
     let store = Store::new();
     configure_projection(&store);
 
-    let reply = store.handle_ordinary_input(ordinary::Input::Observe(
-        ordinary::Observation::Domains(
+    let reply =
+        store.handle_ordinary_input(ordinary::Input::Observe(ordinary::Observation::Domains(
             ordinary::DomainQuery::new(Some(ordinary_domain_name("goldragon.criome"))).into(),
-        )
-        .into(),
-    ));
+        )));
 
     let ordinary::Output::Observed(observed) = reply else {
         panic!("expected domain observation");
     };
-    let ordinary::ObservationResult::Domains(domains) = observed.into_payload() else {
+    let ordinary::ObservationResult::Domains(domains) = observed else {
         panic!("expected domain list");
     };
     let domains = domains
@@ -209,7 +193,6 @@ fn daemon_process_starts_from_binary_configuration_and_rejects_unknown_resolutio
 
     match reply {
         ordinary::Output::RequestRejected(rejection) => {
-            let rejection = rejection.into_payload();
             assert_eq!(rejection.reason, ordinary::RejectionReason::DomainUnknown);
         }
         other => panic!("expected domain-unknown rejection, got {other:?}"),
@@ -266,7 +249,6 @@ fn daemon_process_accepts_meta_projection_and_answers_working_projection() {
     let ordinary::Output::Projected(projection) = reply else {
         panic!("expected projection");
     };
-    let projection = projection.into_payload();
     assert_eq!(projection.records[0].value.payload(), "203.0.113.10");
 
     stop_child(&mut child);
@@ -336,7 +318,6 @@ fn daemon_process_recovers_meta_projection_after_restart() {
     let ordinary::Output::Projected(projection) = reply else {
         panic!("expected persisted projection");
     };
-    let projection = projection.into_payload();
     assert_eq!(projection.records[0].value.payload(), "203.0.113.20");
 
     stop_child(&mut restarted);

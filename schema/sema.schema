@@ -27,8 +27,10 @@
   ProjectionSet meta-signal-domain-criome:lib:ProjectionSet
   RequestRejected meta-signal-domain-criome:lib:RequestRejected
 }
-[ReadInput WriteInput]
-[ReadOutput WriteOutput]
+[(ReadInput ReadInput)
+ (WriteInput WriteInput)]
+[(ReadOutput ReadOutput)
+ (WriteOutput WriteOutput)]
 {
   ReadInput [(Observe Observe) (Resolve Resolve) (Project Project) (Validate Validate)]
   Observe Observation
@@ -50,14 +52,14 @@
 
   RejectionReport { reason RejectionReason marker StateMarker }
   RejectionReason [DomainUnknown NotAuthoritative DomainAlreadyRegistered ProjectionRejected]
-  StateMarker { CommitSequence * StateDigest * }
+  StateMarker { commit_sequence CommitSequence state_digest StateDigest }
   CommitSequence Integer
   StateDigest Integer
 
-  RegistryTable { domains (Vec RegisteredDomain) delegations (Vec DelegationRecord) }
+  RegistryTable { domains (Vector RegisteredDomain) delegations (Vector DelegationRecord) }
   RegisteredDomain { domain Domain authority AuthorityEndpoint marker StateMarker }
   DelegationRecord { domain Domain authority AuthorityEndpoint marker StateMarker }
-  ProjectionTable { projections (Vec ProjectionRecord) }
+  ProjectionTable { projections (Vector ProjectionRecord) }
   ProjectionRecord { domain Domain projection Projection marker StateMarker }
   AuthorityEndpoint String
 }
