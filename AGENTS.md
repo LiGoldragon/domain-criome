@@ -12,3 +12,6 @@ This repository is the runtime leg of the `domain-criome` triad:
 
 Do not add provider API calls here. Cloud-provider execution belongs to the
 `cloud` component.
+
+Operator integrates designer `next` work into `main` by rebasing,
+cherry-picking, re-implementing, or merging when the code is good enough.
