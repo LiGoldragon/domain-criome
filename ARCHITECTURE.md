@@ -4,6 +4,12 @@
 name-server-like, but its primary contract is richer than ordinary DNS: peers
 can ask for intelligent resolution and provider-neutral desired domain state.
 
+## Direction
+
+`domain-criome` owns domain meaning and provider-neutral projection; `cloud` owns provider execution. The daemon's direction is the schema-interface and triad-engine approach, with separate runtime plane schemas for Nexus and SEMA. Domain projection remains provider-neutral until it crosses into the cloud provider-execution component; no provider-specific vocabulary, credentials, or API calls belong here.
+
+Operator integrates designer `next` work into `main` by rebasing, cherry-picking, re-implementing, or merging when the code is good enough.
+
 ## Triad
 
 - Runtime repo: `domain-criome`.
