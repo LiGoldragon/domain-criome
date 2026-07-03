@@ -71,7 +71,7 @@ pub enum Error {
     CommandLineRoute(#[from] signal_frame::CommandLineRouteError),
 
     #[error("NOTA decode error: {0}")]
-    Nota(#[from] nota_next::NotaDecodeError),
+    Nota(#[from] nota::NotaDecodeError),
 
     #[error("command-line request error: {0}")]
     CommandLine(#[from] signal_frame::CommandLineError),

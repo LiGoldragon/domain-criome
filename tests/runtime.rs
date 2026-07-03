@@ -9,7 +9,7 @@ use domain_criome::{
 };
 use meta_signal_domain_criome::schema::lib as meta;
 use meta_signal_domain_criome::{Operation as MetaOperation, ProjectionDeclaration};
-use nota_next::NotaEncode;
+use nota::NotaEncode;
 use signal_domain_criome::schema::lib as ordinary;
 use signal_domain_criome::{
     DomainName, DomainNameSystemRecord, Operation as DomainOperation, ProjectionQuery,

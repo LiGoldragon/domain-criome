@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use meta_signal_domain_criome::Operation as MetaOperation;
 use meta_signal_domain_criome::schema::lib as meta;
-use nota_next::NotaSource;
+use nota::NotaSource;
 use signal_domain_criome::Operation as DomainOperation;
 use signal_domain_criome::schema::lib as ordinary;
 use signal_frame::CommandLineSocket;
