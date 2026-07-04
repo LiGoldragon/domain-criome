@@ -50,16 +50,16 @@
 
   WriteOutput [(DomainRegistered DomainRegistered) (DelegationSet DelegationSet) (DomainRetired DomainRetired) (PolicySet PolicySet) (ProjectionSet ProjectionSet) (RequestRejected RequestRejected)]
 
-  RejectionReport { reason RejectionReason marker StateMarker }
+  RejectionReport { reason.RejectionReason marker.StateMarker }
   RejectionReason [DomainUnknown NotAuthoritative DomainAlreadyRegistered ProjectionRejected]
-  StateMarker { commit_sequence CommitSequence state_digest StateDigest }
+  StateMarker { CommitSequence StateDigest }
   CommitSequence Integer
   StateDigest Integer
 
-  RegistryTable { domains (Vector RegisteredDomain) delegations (Vector DelegationRecord) }
-  RegisteredDomain { domain Domain authority AuthorityEndpoint marker StateMarker }
-  DelegationRecord { domain Domain authority AuthorityEndpoint marker StateMarker }
-  ProjectionTable { projections (Vector ProjectionRecord) }
-  ProjectionRecord { domain Domain projection Projection marker StateMarker }
+  RegistryTable { domains.(Vector RegisteredDomain) delegations.(Vector DelegationRecord) }
+  RegisteredDomain { Domain authority.AuthorityEndpoint marker.StateMarker }
+  DelegationRecord { Domain authority.AuthorityEndpoint marker.StateMarker }
+  ProjectionTable { projections.(Vector ProjectionRecord) }
+  ProjectionRecord { Domain Projection marker.StateMarker }
   AuthorityEndpoint String
 }
