@@ -134,7 +134,7 @@ Signal contract repositories carry only the wire vocabulary that clients send
 and receive. Nexus decisions, SEMA state, daemon storage, and the projection
 runtime belong in this runtime crate.
 
-`domain-criome/build.rs` is wired to the shared `schema_rust_next::build`
+`domain-criome/build.rs` is wired to the shared `schema_rust::build`
 driver for daemon runtime schemas: `schema/nexus.schema` targets
 `NexusRuntime`, `schema/sema.schema` targets `SemaRuntime`, and the daemon
 schema emits the actor-native ordinary/meta listener shell. The build
