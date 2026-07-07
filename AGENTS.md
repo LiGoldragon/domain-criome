@@ -1,7 +1,5 @@
 # domain-criome — Agent Instructions
 
-Read `~/primary/AGENTS.md`, then this file.
-
 This repository is the runtime leg of the `domain-criome` triad:
 
 - `domain-criome-daemon` will own Criome-domain registry and projection state.
